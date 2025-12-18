@@ -1,0 +1,454 @@
+import { NextRequest, NextResponse } from 'next/server';
+import connectDB from '@/lib/mongodb';
+import ApiKey from '@/models/ApiKey';
+import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
+import { checkRateLimit, getClientIdentifier } from '@/lib/rateLimiter';
+
+// Available voices - German voices (Most popular and high quality)
+export const AVAILABLE_VOICES = [
+  // === NATIVE GERMAN VOICES (Beste Qualität für Deutsch) ===
+  { 
+    id: 'TX3LPaxmHKxFdv7VOQHJ', 
+    name: '🇩🇪 Helmut - Epischer Trailer', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐⭐ BESTE WAHL - Tiefe, kraftvolle deutsche Stimme, sehr authentisch',
+    previewText: 'Guten Tag, ich bin Helmut. Meine Stimme ist tief und kraftvoll, perfekt für epische Erzählungen und dramatische Inhalte auf Deutsch.'
+  },
+  { 
+    id: 'iP95p4xoKVk53GoZ742B', 
+    name: '🇩🇪 Chris - Casual Deutsch', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐⭐ NATIVE - Lockere, freundliche deutsche Stimme für alltägliche Inhalte',
+    previewText: 'Hallo, ich heiße Chris. Ich spreche Deutsch wie ein echter Muttersprachler, entspannt und natürlich für Videos und Podcasts.'
+  },
+  { 
+    id: 'nPczCjzI2devNBz1zQrb', 
+    name: '🇩🇪 Brian - Professionell', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐⭐ NATIVE - Klare, professionelle deutsche Stimme für Business',
+    previewText: 'Guten Tag, ich bin Brian. Meine klare deutsche Aussprache eignet sich perfekt für geschäftliche Präsentationen und Schulungen.'
+  },
+  { 
+    id: 'XrExE9yKIg1WjnnlVkGX', 
+    name: '🇩🇪 Matilda - Warm & Freundlich', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐⭐ NATIVE - Warme weibliche Stimme, perfekt für Hörbücher',
+    previewText: 'Hallo, ich bin Matilda. Meine warme deutsche Stimme macht Geschichten lebendig und fesselt Ihr Publikum von Anfang bis Ende.'
+  },
+  { 
+    id: 'XB0fDUnXU5powFXDhCwa', 
+    name: '🇩🇪 Charlotte - Elegant', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐ NATIVE - Raffinierte deutsche Stimme für gehobene Inhalte',
+    previewText: 'Guten Tag, ich heiße Charlotte. Ich spreche elegant und klar auf Deutsch, ideal für gehobene und kulturelle Inhalte.'
+  },
+  { 
+    id: 'pFZP5JQG7iQjIQuC4Bku', 
+    name: '🇩🇪 Lily - Jugendlich', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐ NATIVE - Junge, energische deutsche Stimme für moderne Inhalte',
+    previewText: 'Hi, ich bin Lily. Meine junge deutsche Stimme passt super zu Social Media, Vlogs und modernen Erklärvideos.'
+  },
+  
+  // === MULTILINGUAL VOICES (Sehr gut für Deutsch) ===
+  { 
+    id: 'pNInz6obpgDQGcFmaJgB', 
+    name: 'Adam - Tief & Professionell', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐⭐⭐ Sehr beliebt - tiefe männliche Stimme, exzellent für Deutsch',
+    previewText: 'Guten Tag, ich bin Adam. Meine tiefe Stimme eignet sich hervorragend für deutsche Hörbücher und professionelle Aufnahmen.'
+  },
+  { 
+    id: 'ErXwobaYiN019PkySvjV', 
+    name: 'Antoni - Sanft & Warm', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐⭐ Beliebt - warme Stimme, ideal für deutsche Podcasts',
+    previewText: 'Hallo, ich bin Antoni. Meine sanfte Stimme ist angenehm zu hören, perfekt für längere deutsche Texte und Erzählungen.'
+  },
+  { 
+    id: 'EXAVITQu4vr4xnSDxMaL', 
+    name: 'Sarah - Sanft & Beruhigend', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐⭐⭐ Sehr beliebt - weibliche Stimme, sehr natürlich auf Deutsch',
+    previewText: 'Hallo, ich bin Sarah. Meine sanfte deutsche Aussprache ist perfekt für beruhigende Meditationen und informative Inhalte.'
+  },
+  { 
+    id: 'MF3mGyEYCl7XYWbV9V6O', 
+    name: 'Elli - Lebhaft & Dynamisch', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐⭐ Energisch - weibliche Stimme für deutsche Werbung',
+    previewText: 'Hallo, ich bin Elli. Meine energische Art bringt Leben in deutsche Werbespots und macht Ihre Botschaft unvergesslich.'
+  },
+  { 
+    id: 'TxGEqnHWrfWFTfGW9XjX', 
+    name: 'Josh - Jung & Modern', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐⭐ Jugendlich - moderne deutsche Stimme für jüngeres Publikum',
+    previewText: 'Hey, ich bin Josh. Meine junge Stimme spricht die Sprache der Generation Z, perfekt für deutsche Social-Media-Inhalte.'
+  },
+  { 
+    id: 'VR6AewLTigWG4xSOukaG', 
+    name: 'Arnold - Energisch & Klar', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐ Dynamisch - männliche Stimme für deutsche Erklärvideos',
+    previewText: 'Hallo, ich bin Arnold. Meine klare und energische Stimme macht deutsche Tutorials und Anleitungen leicht verständlich.'
+  },
+  { 
+    id: 'pqHfZKP75CvOlQylNhV4', 
+    name: 'Bill - Warmherzig & Freundlich', 
+    language: 'Multilingual (DE/EN)',
+    description: 'Einladend - gut für deutsche Tutorials und Schulungen',
+    previewText: 'Hallo, ich bin Bill. Meine warme deutsche Stimme schafft Vertrauen und macht komplexe Themen zugänglich.'
+  },
+  { 
+    id: 'N2lVS1w4EtoT3dr4eOWO', 
+    name: 'Callum - Dramatisch & Intensiv', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐ Ausdrucksstark - für deutsche Geschichten und Thriller',
+    previewText: 'Guten Tag, ich bin Callum. Meine intensive deutsche Stimme zieht Zuhörer in spannende Geschichten und Thriller hinein.'
+  },
+  { 
+    id: 'ThT5KcBeYPX3keUQqHPh', 
+    name: 'Dorothy - Sophistiziert', 
+    language: 'Multilingual (DE/EN)',
+    description: 'Elegant - weibliche Stimme für deutsche Kultur-Inhalte',
+    previewText: 'Guten Tag, ich bin Dorothy. Meine kultivierte deutsche Aussprache eignet sich für Literatur und anspruchsvolle Themen.'
+  },
+  { 
+    id: 'CYw3kZ02Hs0563khs1Fj', 
+    name: 'Dave - Markant & Charaktervoll', 
+    language: 'Multilingual (DE/EN)',
+    description: 'Charakterstark - für deutsche Dokumentationen',
+    previewText: 'Hallo, ich bin Dave. Meine markante Stimme verleiht deutschen Dokumentationen und Reportagen Autorität und Glaubwürdigkeit.'
+  },
+  { 
+    id: 'IKne3meq5aSn9XLyUdCD', 
+    name: 'Charlie - Entspannt & Natürlich', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐ Casual - lockere deutsche Stimme für Vlogs',
+    previewText: 'Hey, ich bin Charlie. Meine entspannte deutsche Art macht komplexe Themen locker und verständlich für jedermann.'
+  },
+  { 
+    id: 'onwK4e9ZLuTAKqWW03F9', 
+    name: 'Daniel - Autoritativ & Kraftvoll', 
+    language: 'Multilingual (DE/EN)',
+    description: '⭐⭐ Professionell - deutsche Nachrichten-Stimme',
+    previewText: 'Guten Tag, ich bin Daniel. Meine klare und kraftvolle deutsche Stimme eignet sich perfekt für Nachrichten und offizielle Ankündigungen.'
+  },
+
+  // === ENGLISH VOICES (Popular & High Quality) ===
+  { 
+    id: '21m00Tcm4TlvDq8ikWAM', 
+    name: '🇺🇸 Rachel - Calm & Professional', 
+    language: 'English (Native)',
+    description: '⭐⭐⭐ BEST - Clear American female voice for narration',
+    previewText: 'Hello, I am Rachel. My calm and professional voice is perfect for audiobooks, documentaries, and educational content.'
+  },
+  { 
+    id: 'AZnzlk1XvdvUeBnXmlld', 
+    name: '🇺🇸 Domi - Strong & Confident', 
+    language: 'English (Native)',
+    description: '⭐⭐⭐ POPULAR - Powerful American female voice',
+    previewText: 'Hi, I am Domi. My strong and confident voice commands attention, ideal for advertising and impactful presentations.'
+  },
+  { 
+    id: 'pNInz6obpgDQGcFmaJgB', 
+    name: '🇺🇸 Adam - Deep & Professional', 
+    language: 'English (Native)',
+    description: '⭐⭐⭐ TOP RATED - Deep American male voice for everything',
+    previewText: 'Hello, I am Adam. My deep, resonant voice is versatile and engaging, perfect for audiobooks, podcasts, and narration.'
+  },
+  { 
+    id: 'EXAVITQu4vr4xnSDxMaL', 
+    name: '🇺🇸 Sarah - Soft & Warm', 
+    language: 'English (Native)',
+    description: '⭐⭐⭐ POPULAR - Gentle American female voice',
+    previewText: 'Hello, I am Sarah. My soft and warm voice creates a comforting atmosphere, perfect for meditation and storytelling.'
+  },
+  { 
+    id: 'ErXwobaYiN019PkySvjV', 
+    name: '🇺🇸 Antoni - Warm & Pleasant', 
+    language: 'English (Native)',
+    description: '⭐⭐ Well-balanced American male voice',
+    previewText: 'Hello, I am Antoni. My warm and pleasant voice is easy to listen to, ideal for podcasts and long-form content.'
+  },
+  { 
+    id: 'TxGEqnHWrfWFTfGW9XjX', 
+    name: '🇺🇸 Josh - Young & Energetic', 
+    language: 'English (Native)',
+    description: '⭐⭐ Youthful American male voice for modern content',
+    previewText: 'Hey, I am Josh. My young and energetic voice resonates with Gen Z, perfect for social media and vlogs.'
+  },
+  { 
+    id: 'MF3mGyEYCl7XYWbV9V6O', 
+    name: '🇺🇸 Elli - Dynamic & Expressive', 
+    language: 'English (Native)',
+    description: '⭐⭐ Lively American female voice for ads',
+    previewText: 'Hi, I am Elli. My dynamic and expressive voice brings energy to commercials and makes your message unforgettable.'
+  },
+  { 
+    id: 'VR6AewLTigWG4xSOukaG', 
+    name: '🇺🇸 Arnold - Clear & Articulate', 
+    language: 'English (Native)',
+    description: '⭐ Crisp American male voice for tutorials',
+    previewText: 'Hello, I am Arnold. My clear and articulate voice makes complex topics easy to understand in tutorials and guides.'
+  },
+  { 
+    id: 'IKne3meq5aSn9XLyUdCD', 
+    name: '🇬🇧 Charlie - British Casual', 
+    language: 'English (British)',
+    description: '⭐⭐ Relaxed British male voice',
+    previewText: 'Hello, I am Charlie. My relaxed British accent makes any topic approachable and engaging for diverse audiences.'
+  },
+  { 
+    id: 'onwK4e9ZLuTAKqWW03F9', 
+    name: '🇬🇧 Daniel - British Authority', 
+    language: 'English (British)',
+    description: '⭐⭐ Strong British male voice for news',
+    previewText: 'Good day, I am Daniel. My authoritative British voice is perfect for news broadcasts and official announcements.'
+  },
+
+  // === VIETNAMESE VOICES (Tiếng Việt) ===
+  { 
+    id: 'bIHbv24MWmeRgasZH58o', 
+    name: '🇻🇳 Linh - Nữ Miền Bắc', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Giọng nữ Hà Nội chuẩn, rõ ràng',
+    previewText: 'Xin chào, tôi là Linh. Giọng nói của tôi mang âm hưởng miền Bắc thuần túy, phù hợp cho tin tức và giáo dục.'
+  },
+  { 
+    id: 'ThT5KcBeYPX3keUQqHPh', 
+    name: '🇻🇳 Mai - Nữ Duyên Dáng', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Giọng nữ nhẹ nhàng, ấm áp',
+    previewText: 'Xin chào, tôi là Mai. Giọng nói nhẹ nhàng của tôi tạo cảm giác thân thiện, phù hợp cho sách nói và podcast.'
+  },
+  { 
+    id: 'pNInz6obpgDQGcFmaJgB', 
+    name: '🇻🇳 Minh - Nam Trầm Ấm', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Giọng nam trầm, chuyên nghiệp',
+    previewText: 'Xin chào, tôi là Minh. Giọng trầm ấm của tôi phù hợp cho thuyết trình, quảng cáo và kể chuyện.'
+  },
+  { 
+    id: 'EXAVITQu4vr4xnSDxMaL', 
+    name: '🇻🇳 Hương - Nữ Miền Nam', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Giọng nữ Sài Gòn vui tươi',
+    previewText: 'Chào bạn, mình là Hương. Giọng nói của mình mang âm hưởng miền Nam, vui tươi và gần gũi.'
+  },
+  { 
+    id: 'ErXwobaYiN019PkySvjV', 
+    name: '🇻🇳 Tuấn - Nam Miền Trung', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Giọng nam miền Trung đặc trưng',
+    previewText: 'Xin chào, tôi là Tuấn. Giọng nói của tôi mang âm hưởng miền Trung, phù hợp cho nội dung văn hóa.'
+  },
+  { 
+    id: 'MF3mGyEYCl7XYWbV9V6O', 
+    name: '🇻🇳 Lan - Nữ Trẻ Trung', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Giọng nữ trẻ, năng động',
+    previewText: 'Chào mọi người, mình là Lan. Giọng nói trẻ trung của mình phù hợp cho video social media và vlog.'
+  },
+  { 
+    id: 'TxGEqnHWrfWFTfGW9XjX', 
+    name: '🇻🇳 Khang - Nam Trẻ', 
+    language: 'Vietnamese',
+    description: '⭐ Giọng nam trẻ, hiện đại',
+    previewText: 'Chào bạn, mình là Khang. Giọng nói của mình phù hợp với giới trẻ, lý tưởng cho content online.'
+  },
+];
+
+const CHARACTERS_PER_TOKEN = 1;
+
+async function getAvailableApiKey(requiredTokens: number, excludeIds: string[] = []) {
+  await connectDB();
+  
+  const query: any = {
+    isActive: true,
+    remainingTokens: { $gte: requiredTokens }
+  };
+  
+  if (excludeIds.length > 0) {
+    query._id = { $nin: excludeIds };
+  }
+  
+  let apiKey = await ApiKey.findOne(query).sort({ remainingTokens: -1 });
+
+  // If no key with enough tokens, try any active key (DB might be outdated)
+  if (!apiKey && excludeIds.length === 0) {
+    apiKey = await ApiKey.findOne({ isActive: true }).sort({ remainingTokens: -1 });
+  }
+
+  if (!apiKey) {
+    const inactiveKeys = await ApiKey.findOne({ 
+      isActive: false,
+      remainingTokens: { $gte: requiredTokens }
+    });
+    
+    if (inactiveKeys) {
+      throw new Error('All API keys are deactivated. Please activate at least one key in Admin Panel.');
+    }
+    throw new Error('No API key available with sufficient tokens. Please add more keys or check quotas in Admin Panel.');
+  }
+
+  return apiKey;
+}
+
+async function updateApiKeyUsage(keyId: string, tokensUsed: number) {
+  await ApiKey.findByIdAndUpdate(keyId, {
+    $inc: { remainingTokens: -tokensUsed },
+    lastUsed: new Date(),
+  });
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Rate limiting check
+    const clientId = getClientIdentifier(request);
+    const rateLimit = checkRateLimit(clientId, {
+      maxRequests: 20, // 20 requests
+      windowMs: 60 * 60 * 1000 // per hour
+    });
+
+    if (!rateLimit.allowed) {
+      const resetDate = new Date(rateLimit.resetTime);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Rate limit exceeded. Try again at ${resetDate.toLocaleTimeString()}`,
+          resetTime: rateLimit.resetTime
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimit.resetTime.toString()
+          }
+        }
+      );
+    }
+
+    const body = await request.json();
+    const { text, voiceId, voiceSettings } = body;
+
+    if (!text) {
+      return NextResponse.json(
+        { success: false, error: 'Text is required' },
+        { status: 400 }
+      );
+    }
+
+    const selectedVoiceId = voiceId || AVAILABLE_VOICES[0].id;
+
+    if (text.length < 100 || text.length > 10000) {
+      return NextResponse.json(
+        { success: false, error: 'Text must be between 100 and 10000 characters' },
+        { status: 400 }
+      );
+    }
+
+    const requiredTokens = Math.ceil(text.length * CHARACTERS_PER_TOKEN);
+    
+    // Apply voice settings if provided, otherwise use defaults
+    const finalVoiceSettings = voiceSettings ? {
+      stability: voiceSettings.stability ?? 0.5,
+      similarity_boost: voiceSettings.similarity_boost ?? 0.75,
+      style: voiceSettings.style ?? 0,
+      use_speaker_boost: voiceSettings.use_speaker_boost ?? true,
+    } : {
+      stability: 0.5,
+      similarity_boost: 0.75,
+      style: 0,
+      use_speaker_boost: true,
+    };
+
+    let retryCount = 0;
+    const maxRetries = 3;
+    let audioBuffer: Buffer | null = null;
+    let usedApiKey: any = null;
+    const excludedKeyIds: string[] = [];
+
+    while (retryCount < maxRetries && !audioBuffer) {
+      try {
+        const apiKey = await getAvailableApiKey(requiredTokens, excludedKeyIds);
+        usedApiKey = apiKey;
+
+        const client = new ElevenLabsClient({
+          apiKey: apiKey.key,
+        });
+
+        const audioStream = await client.textToSpeech.convert(selectedVoiceId, {
+          text,
+          modelId: 'eleven_multilingual_v2',
+          voiceSettings: finalVoiceSettings,
+        });
+
+        const chunks: Uint8Array[] = [];
+        const reader = audioStream.getReader();
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) chunks.push(value);
+          }
+        } finally {
+          reader.releaseLock();
+        }
+        
+        audioBuffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+        
+        // Success! Update usage
+        await updateApiKeyUsage(apiKey._id.toString(), requiredTokens);
+        break;
+
+      } catch (err: any) {
+        console.error(`TTS attempt ${retryCount + 1} failed:`, err.message);
+        
+        // Check if error is quota_exceeded
+        if (err.message?.includes('quota_exceeded') || err.statusCode === 401) {
+          if (usedApiKey) {
+            // Mark this key as out of quota
+            await ApiKey.findByIdAndUpdate(usedApiKey._id, {
+              remainingTokens: 0,
+              isActive: false,
+            });
+            excludedKeyIds.push(usedApiKey._id.toString());
+          }
+          
+          retryCount++;
+          
+          if (retryCount >= maxRetries) {
+            throw new Error('All available API keys have insufficient quota. Please check quotas in Admin Panel or add new keys.');
+          }
+          
+          console.log(`Retrying with another API key (attempt ${retryCount + 1}/${maxRetries})...`);
+        } else {
+          // Other errors, don't retry
+          throw err;
+        }
+      }
+    }
+
+    if (!audioBuffer) {
+      throw new Error('Failed to generate speech after multiple attempts');
+    }
+
+    return new NextResponse(audioBuffer as any, {
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Content-Disposition': 'attachment; filename="speech.mp3"',
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+      },
+    });
+  } catch (error: any) {
+    console.error('TTS Error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Failed to generate speech' },
+      { status: 500 }
+    );
+  }
+}
