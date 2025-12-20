@@ -25,7 +25,8 @@ export default function AdminPage() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newKey, setNewKey] = useState({ name: '', key: '', totalTokens: 10000 });
+  const [newKey, setNewKey] = useState({ key: '', totalTokens: 10000 });
+  const [nextKeyNumber, setNextKeyNumber] = useState(41);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [checkingQuota, setCheckingQuota] = useState<string | null>(null);
@@ -45,6 +46,17 @@ export default function AdminPage() {
       if (data.success) {
         setKeys(data.data);
         setPagination(data.pagination);
+        
+        // Calculate next key number based on existing keys
+        const keyNumbers = data.data
+          .map((k: ApiKey) => {
+            const match = k.name.match(/^Key #?(\d+)$/i);
+            return match ? parseInt(match[1]) : 0;
+          })
+          .filter((n: number) => n > 0);
+        
+        const maxNumber = keyNumbers.length > 0 ? Math.max(...keyNumbers) : 40;
+        setNextKeyNumber(maxNumber + 1);
       }
     } catch (err) {
       setError('Failed to fetch API keys');
@@ -65,13 +77,18 @@ export default function AdminPage() {
       const response = await fetch('/api/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newKey),
+        body: JSON.stringify({
+          name: `Key #${nextKeyNumber}`,
+          key: newKey.key,
+          totalTokens: newKey.totalTokens
+        }),
       });
 
       const data = await response.json();
       if (data.success) {
-        setNewKey({ name: '', key: '', totalTokens: 10000 });
+        setNewKey({ key: '', totalTokens: 10000 });
         setShowAddForm(false);
+        setNextKeyNumber(nextKeyNumber + 1);
         fetchKeys(pagination.page);
       } else {
         setError(data.error);
@@ -182,10 +199,26 @@ export default function AdminPage() {
       <div className="max-w-5xl mx-auto">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">API Keys</h1>
+            <h1 className="text-2xl font-bold text-gray-900">API Keys Management</h1>
             <Link href="/" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
               Back to TTS
             </Link>
+          </div>
+
+          {/* ElevenLabs Free Tier Info */}
+          <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r">
+            <div className="flex items-start gap-3">
+              <div className="text-blue-500 text-2xl">ℹ️</div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-900 mb-2">ElevenLabs Free Tier Limits</h3>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• <strong>10,000 characters/month</strong> per API key (1 character = 1 token)</li>
+                  <li>• Quota automatically resets at the start of each month (billing cycle)</li>
+                  <li>• Use <strong>Refresh</strong> button to sync current quota from ElevenLabs</li>
+                  <li>• Multiple keys = Multiple quotas (e.g., 3 keys = 30,000 chars/month)</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           {error && (
@@ -228,48 +261,36 @@ export default function AdminPage() {
           </div>
 
           {showAddForm && (
-            <form onSubmit={handleAddKey} className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={newKey.name}
-                    onChange={(e) => setNewKey({ ...newKey, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                    placeholder="Key name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+            <form onSubmit={handleAddKey} className="mb-6 p-4 bg-green-50 border border-green-200 rounded">
+              <div className="mb-3">
+                <p className="text-sm text-green-800">
+                  <strong>Adding Key #{nextKeyNumber}</strong> - Just paste your ElevenLabs API key below
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ElevenLabs API Key <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={newKey.key}
                     onChange={(e) => setNewKey({ ...newKey, key: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono bg-white text-gray-900"
-                    placeholder="sk_xxxxx"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Tokens</label>
-                  <input
-                    type="number"
-                    value={newKey.totalTokens}
-                    onChange={(e) => setNewKey({ ...newKey, totalTokens: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                    placeholder="10000"
+                    placeholder="sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                     required
                   />
                 </div>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
                 >
-                  Add
+                  ✓ Add Key #{nextKeyNumber}
                 </button>
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Default quota: 10,000 characters/month (Free tier)
+              </p>
             </form>
           )}
 
@@ -310,19 +331,28 @@ export default function AdminPage() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="space-y-1">
-                          <div className="flex items-baseline gap-1">
+                          <div className="flex items-baseline gap-2">
                             <span className="font-semibold text-gray-900">{key.remainingTokens.toLocaleString()}</span>
                             <span className="text-sm text-gray-500">/ {key.totalTokens.toLocaleString()}</span>
+                            <span className="text-xs text-gray-400">chars</span>
+                          </div>
+                          <div className="text-xs text-gray-500 mb-1">
+                            {Math.round((key.remainingTokens / key.totalTokens) * 100)}% remaining
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
-                              className={`h-2 rounded-full ${
+                              className={`h-2 rounded-full transition-all ${
                                 (key.remainingTokens / key.totalTokens) > 0.5 ? 'bg-green-500' :
                                 (key.remainingTokens / key.totalTokens) > 0.2 ? 'bg-yellow-500' : 'bg-red-500'
                               }`}
                               style={{ width: `${(key.remainingTokens / key.totalTokens) * 100}%` }}
                             ></div>
                           </div>
+                          {key.lastUsed && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              Last used: {new Date(key.lastUsed).toLocaleDateString('vi-VN')}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
