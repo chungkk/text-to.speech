@@ -35,8 +35,18 @@ export default function Header({ currentLang, onLanguageChange }: HeaderProps) {
             </div>
           </div>
 
-          {/* Language Switcher & Admin Link */}
+          {/* Navigation Links, Language Switcher & Admin Link */}
           <div className="flex items-center gap-4">
+            {/* Navigation Links */}
+            <nav className="flex items-center gap-2">
+              <Link
+                href="/longleng"
+                className="px-4 py-2 text-white hover:bg-white/20 rounded-lg transition-all font-semibold bg-white/10 border border-white/30 hover:border-white/50 shadow-sm"
+              >
+                🎬 Longleng
+              </Link>
+            </nav>
+
             {/* Language Dropdown */}
             <div className="relative group">
               <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm border border-white/20 hover:border-white/40">
