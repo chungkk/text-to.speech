@@ -50,7 +50,7 @@ export default function AdminPage() {
         // Calculate next key number based on existing keys
         const keyNumbers = data.data
           .map((k: ApiKey) => {
-            const match = k.name.match(/^Key #?(\d+)$/i);
+            const match = k.name.match(/^(\d+)$/);
             return match ? parseInt(match[1]) : 0;
           })
           .filter((n: number) => n > 0);
@@ -78,7 +78,7 @@ export default function AdminPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: `Key #${nextKeyNumber}`,
+          name: `${nextKeyNumber}`,
           key: newKey.key,
           totalTokens: newKey.totalTokens
         }),
@@ -264,7 +264,7 @@ export default function AdminPage() {
             <form onSubmit={handleAddKey} className="mb-6 p-4 bg-green-50 border border-green-200 rounded">
               <div className="mb-3">
                 <p className="text-sm text-green-800">
-                  <strong>Adding Key #{nextKeyNumber}</strong> - Just paste your ElevenLabs API key below
+                  <strong>Adding Key {nextKeyNumber}</strong> - Just paste your ElevenLabs API key below
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -285,7 +285,7 @@ export default function AdminPage() {
                   type="submit"
                   className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
                 >
-                  ✓ Add Key #{nextKeyNumber}
+                  ✓ Add Key {nextKeyNumber}
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-2">
