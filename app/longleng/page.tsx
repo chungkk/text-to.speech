@@ -136,27 +136,56 @@ export default function LongTextSplitter() {
   const splitTextByApiQuotas = (text: string, apiKeys: QuotaInfo['keys']): { chunk: string; suggestedApiKey: string; maxTokens: number }[] => {
     const chunks: { chunk: string; suggestedApiKey: string; maxTokens: number }[] = [];
     let startIndex = 0;
-    let apiKeyIndex = 0;
+    
+    // Sort keys: smaller quotas first to avoid wasting large quotas on small texts
+    const sortedKeys = [...apiKeys].sort((a, b) => a.remainingTokens - b.remainingTokens);
+    const usedKeyIds = new Set<string>();
 
-    console.log(`📏 Splitting text by API quotas:`, apiKeys.map(k => `${k.name}: ${k.remainingTokens}`));
+    console.log(`📏 Splitting text by API quotas (best-fit strategy):`, sortedKeys.map(k => `${k.name}: ${k.remainingTokens}`));
     console.log(`📄 Total text length: ${text.length} chars`);
 
-    while (startIndex < text.length && apiKeyIndex < apiKeys.length) {
-      const currentApiKey = apiKeys[apiKeyIndex];
+    while (startIndex < text.length) {
       const remainingText = text.length - startIndex;
       
-      console.log(`\n🔍 Processing with ${currentApiKey.name} (${currentApiKey.remainingTokens} tokens), remaining text: ${remainingText} chars`);
+      // Find best-fit API key: smallest key that can fit the remaining text (or largest available chunk)
+      let bestKey = null;
+      let bestKeyIndex = -1;
       
-      // Safety buffer: use 200 chars less than quota, max 9999
-      const safeMaxLength = Math.min(currentApiKey.remainingTokens - 200, 9999);
-      const minLength = Math.min(Math.floor(safeMaxLength * 0.8), safeMaxLength - 100);
-
-      if (safeMaxLength < 100) {
-        // Skip this API key if quota too low
-        console.warn(`⚠️ Skipping ${currentApiKey.name}: quota too low (${currentApiKey.remainingTokens})`);
-        apiKeyIndex++;
-        continue;
+      for (let i = 0; i < sortedKeys.length; i++) {
+        const key = sortedKeys[i];
+        if (usedKeyIds.has(key.name)) continue; // Skip already used keys
+        
+        const safeMaxLength = Math.min(key.remainingTokens - 50, 9950);
+        if (safeMaxLength < 100) continue; // Skip keys with insufficient quota
+        
+        // Best fit: smallest key that can handle remaining text
+        if (safeMaxLength >= remainingText) {
+          bestKey = key;
+          bestKeyIndex = i;
+          break; // Found perfect fit
+        }
+        
+        // If no perfect fit yet, keep track of largest available
+        if (!bestKey || key.remainingTokens > bestKey.remainingTokens) {
+          bestKey = key;
+          bestKeyIndex = i;
+        }
       }
+      
+      if (!bestKey) {
+        const remaining = text.length - startIndex;
+        console.error(`❌ Ran out of API keys! Remaining text: ${remaining} chars`);
+        setError(`Không đủ API keys để chia hết text. Còn thiếu ${remaining} ký tự. Vui lòng thêm API keys hoặc chia text nhỏ hơn.`);
+        break;
+      }
+      
+      const currentApiKey = bestKey;
+      
+      console.log(`\n🎯 Best-fit key: ${currentApiKey.name} (${currentApiKey.remainingTokens} tokens) for ${remainingText} chars`);
+      
+      // Safety buffer: use 50 chars less than quota, max 9950 (closer to API limit)
+      const safeMaxLength = Math.min(currentApiKey.remainingTokens - 50, 9950);
+      const minLength = Math.min(Math.floor(safeMaxLength * 0.8), safeMaxLength - 100);
 
       // If remaining text fits in this API's quota
       if (remainingText <= safeMaxLength) {
@@ -166,8 +195,8 @@ export default function LongTextSplitter() {
           suggestedApiKey: currentApiKey.name,
           maxTokens: currentApiKey.remainingTokens
         });
-        console.log(`✅ Final chunk: ${finalChunk.length} chars (fits in quota)`);
-        startIndex = text.length; // Mark as completed
+        console.log(`✅ Final chunk: ${finalChunk.length} chars → ${currentApiKey.name} (perfect fit!)`);
+        usedKeyIds.add(currentApiKey.name);
         break;
       }
 
@@ -198,7 +227,10 @@ export default function LongTextSplitter() {
         maxTokens: currentApiKey.remainingTokens
       });
       
-      console.log(`📦 Chunk ${chunks.length}: ${chunkText.length} chars, endIndex: ${endIndex}`);
+      console.log(`📦 Chunk ${chunks.length}: ${chunkText.length} chars → ${currentApiKey.name}`);
+      
+      // Mark this key as used
+      usedKeyIds.add(currentApiKey.name);
 
       // Skip whitespace at the beginning of next chunk
       while (endIndex < text.length && /\s/.test(text[endIndex])) {
@@ -206,20 +238,11 @@ export default function LongTextSplitter() {
       }
 
       startIndex = endIndex;
-      apiKeyIndex++; // Move to next API key
-    }
-
-    // If text still remaining but no more API keys, warn user
-    if (startIndex < text.length) {
-      const remaining = text.length - startIndex;
-      console.error(`❌ Ran out of API keys! Remaining text: ${remaining} chars`);
-      console.error(`Remaining text preview: "${text.slice(startIndex, startIndex + 100)}..."`);
-      setError(`Không đủ API keys để chia hết text. Còn thiếu ${remaining} ký tự. Vui lòng thêm API keys hoặc chia text nhỏ hơn.`);
     }
 
     const totalCharsInChunks = chunks.reduce((sum, c) => sum + c.chunk.length, 0);
     console.log(`\n✅ Split complete:`);
-    console.log(`   - ${chunks.length} chunks using ${apiKeyIndex} API keys`);
+    console.log(`   - ${chunks.length} chunks using ${usedKeyIds.size} API keys`);
     console.log(`   - Original text: ${text.length} chars`);
     console.log(`   - Total in chunks: ${totalCharsInChunks} chars`);
     console.log(`   - Difference: ${text.length - totalCharsInChunks} chars (whitespace trimmed)`);
@@ -233,13 +256,17 @@ export default function LongTextSplitter() {
     setError('');
     
     try {
-      // Refresh quota info first
+      // Force refresh quota to get real-time data from ElevenLabs
+      console.log('🔄 Refreshing quota info before split...');
       await fetchQuotaInfo();
       
       if (!quotaInfo || quotaInfo.keys.length === 0) {
         setError('Không có API keys khả dụng. Vui lòng thêm API keys trong Admin Panel.');
         return;
       }
+      
+      console.log('📊 Available quotas:', quotaInfo.keys.map(k => `${k.name}: ${k.remainingTokens} tokens`));
+      console.log(`📄 Input text: ${inputText.length} characters`);
       
       // Split text using all available API keys
       const chunks = splitTextByApiQuotas(inputText, quotaInfo.keys);

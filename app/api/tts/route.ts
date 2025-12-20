@@ -382,6 +382,23 @@ async function syncQuotaFromElevenLabs(apiKey: any) {
 async function getAvailableApiKey(requiredTokens: number, excludeIds: string[] = []) {
   await connectDB();
   
+  console.log(`🔍 Looking for best-fit API key for ${requiredTokens} tokens (excluding ${excludeIds.length} keys)`);
+  
+  // Always sync all active keys first to ensure accurate quotas
+  const allActive = await ApiKey.find({ isActive: true });
+  console.log(`🔄 Syncing ${allActive.length} active keys to get real-time quotas...`);
+  
+  for (const key of allActive) {
+    const lastUpdated = key.updatedAt || key.createdAt;
+    const hoursSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
+    
+    // Only sync if not recently updated (within 1 hour)
+    if (hoursSinceUpdate > 1) {
+      await syncQuotaFromElevenLabs(key);
+    }
+  }
+  
+  // Get all available keys (not excluded, active, sufficient quota)
   const query: any = {
     isActive: true,
     remainingTokens: { $gte: requiredTokens }
@@ -391,7 +408,18 @@ async function getAvailableApiKey(requiredTokens: number, excludeIds: string[] =
     query._id = { $nin: excludeIds };
   }
   
-  let apiKey = await ApiKey.findOne(query).sort({ remainingTokens: -1 });
+  // Find all matching keys and sort by remainingTokens ASCENDING (smallest first)
+  const availableKeys = await ApiKey.find(query).sort({ remainingTokens: 1 });
+  
+  let apiKey = null;
+  
+  if (availableKeys.length > 0) {
+    // Best-fit strategy: use smallest key that fits (avoid wasting large quotas)
+    apiKey = availableKeys[0];
+    console.log(`🎯 Best-fit: ${apiKey.name} with ${apiKey.remainingTokens} tokens for ${requiredTokens} required`);
+  } else {
+    console.log(`❌ No key found with >= ${requiredTokens} tokens`);
+  }
 
   // Auto-refresh if key hasn't been synced recently
   if (apiKey) {
