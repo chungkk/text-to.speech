@@ -45,6 +45,14 @@ export default function LongTextSplitter() {
   const [isMerging, setIsMerging] = useState(false);
   const [mergeProgress, setMergeProgress] = useState(0);
 
+  // Helper function to check if current settings match a preset
+  const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
+    return stability === presetStability && 
+           similarityBoost === presetSimilarity && 
+           style === presetStyle && 
+           useSpeakerBoost === presetBoost;
+  };
+
   useEffect(() => {
     const savedLang = localStorage.getItem('appLanguage') as Language;
     if (savedLang && ['de', 'en', 'vi'].includes(savedLang)) {
@@ -513,8 +521,15 @@ export default function LongTextSplitter() {
                       setStyle(0);
                       setUseSpeakerBoost(true);
                     }}
-                    className="px-3 py-2 text-xs bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className={`px-3 py-2 text-xs bg-white border rounded-lg hover:bg-gray-50 transition-colors relative ${
+                      isPresetActive(0.5, 0.75, 0, true) ? 'border-blue-500 border-2 ring-2 ring-blue-200' : 'border-gray-300'
+                    }`}
                   >
+                    {isPresetActive(0.5, 0.75, 0, true) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div className="font-semibold">🎯 Standard</div>
                     <div className="text-[10px] text-gray-500 mt-0.5">Ausgewogen & neutral</div>
                   </button>
@@ -527,8 +542,15 @@ export default function LongTextSplitter() {
                       setStyle(0.5);
                       setUseSpeakerBoost(true);
                     }}
-                    className="px-3 py-2 text-xs bg-gradient-to-br from-yellow-400 via-red-400 to-red-500 text-white font-bold rounded-lg hover:from-yellow-500 hover:to-red-600 transition-colors shadow-md"
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-yellow-400 via-red-400 to-red-500 text-white font-bold rounded-lg hover:from-yellow-500 hover:to-red-600 transition-colors shadow-md relative ${
+                      isPresetActive(0.3, 0.85, 0.5, true) ? 'ring-4 ring-yellow-300' : ''
+                    }`}
                   >
+                    {isPresetActive(0.3, 0.85, 0.5, true) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div className="flex items-center justify-center gap-1">
                       <span>🇩🇪</span>
                       <span className="text-[11px]">Authentisch</span>
@@ -544,8 +566,15 @@ export default function LongTextSplitter() {
                       setStyle(0);
                       setUseSpeakerBoost(false);
                     }}
-                    className="px-3 py-2 text-xs bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className={`px-3 py-2 text-xs bg-white border rounded-lg hover:bg-gray-50 transition-colors relative ${
+                      isPresetActive(0.8, 0.5, 0, false) ? 'border-blue-500 border-2 ring-2 ring-blue-200' : 'border-gray-300'
+                    }`}
                   >
+                    {isPresetActive(0.8, 0.5, 0, false) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div className="font-semibold">📖 Hörbuch</div>
                     <div className="text-[10px] text-gray-500 mt-0.5">Ruhig & konsistent</div>
                   </button>
@@ -559,8 +588,15 @@ export default function LongTextSplitter() {
                       setStyle(0.65);
                       setUseSpeakerBoost(true);
                     }}
-                    className="px-3 py-2 text-xs bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md"
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md relative ${
+                      isPresetActive(0.15, 0.9, 0.65, true) ? 'ring-4 ring-purple-300' : ''
+                    }`}
                   >
+                    {isPresetActive(0.15, 0.9, 0.65, true) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div>🎭 Mega Expressiv</div>
                     <div className="text-[10px] mt-0.5">Emotionen & Variationen</div>
                   </button>
@@ -573,8 +609,15 @@ export default function LongTextSplitter() {
                       setStyle(0.8);
                       setUseSpeakerBoost(true);
                     }}
-                    className="px-3 py-2 text-xs bg-gradient-to-br from-red-600 to-orange-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-orange-700 transition-colors shadow-md"
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-red-600 to-orange-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-orange-700 transition-colors shadow-md relative ${
+                      isPresetActive(0.2, 0.95, 0.8, true) ? 'ring-4 ring-red-300' : ''
+                    }`}
                   >
+                    {isPresetActive(0.2, 0.95, 0.8, true) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div>🎬 Dramatisch ULTRA</div>
                     <div className="text-[10px] mt-0.5">Max Intensität</div>
                   </button>
@@ -587,8 +630,15 @@ export default function LongTextSplitter() {
                       setStyle(0.6);
                       setUseSpeakerBoost(true);
                     }}
-                    className="px-3 py-2 text-xs bg-gradient-to-br from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-colors shadow-md"
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-colors shadow-md relative ${
+                      isPresetActive(0.25, 0.88, 0.6, true) ? 'ring-4 ring-blue-300' : ''
+                    }`}
                   >
+                    {isPresetActive(0.25, 0.88, 0.6, true) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div>🎙️ Podcast Pro</div>
                     <div className="text-[10px] mt-0.5">Dynamisch & fesselnd</div>
                   </button>
@@ -602,8 +652,15 @@ export default function LongTextSplitter() {
                       setStyle(0.75);
                       setUseSpeakerBoost(true);
                     }}
-                    className="px-3 py-2 text-xs bg-gradient-to-br from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors shadow-md"
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors shadow-md relative ${
+                      isPresetActive(0.18, 0.92, 0.75, true) ? 'ring-4 ring-orange-300' : ''
+                    }`}
                   >
+                    {isPresetActive(0.18, 0.92, 0.75, true) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div>📢 Werbung</div>
                     <div className="text-[10px] mt-0.5">Kraftvoll & überzeugend</div>
                   </button>
@@ -616,8 +673,15 @@ export default function LongTextSplitter() {
                       setStyle(0.85);
                       setUseSpeakerBoost(true);
                     }}
-                    className="px-3 py-2 text-xs bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-lg hover:from-indigo-700 hover:to-purple-800 transition-colors shadow-md"
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-lg hover:from-indigo-700 hover:to-purple-800 transition-colors shadow-md relative ${
+                      isPresetActive(0.12, 0.95, 0.85, true) ? 'ring-4 ring-indigo-300' : ''
+                    }`}
                   >
+                    {isPresetActive(0.12, 0.95, 0.85, true) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div>🎪 Storytelling</div>
                     <div className="text-[10px] mt-0.5">Episch & fesselnd</div>
                   </button>
@@ -630,8 +694,15 @@ export default function LongTextSplitter() {
                       setStyle(0.55);
                       setUseSpeakerBoost(true);
                     }}
-                    className="px-3 py-2 text-xs bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-colors shadow-md"
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-colors shadow-md relative ${
+                      isPresetActive(0.22, 0.87, 0.55, true) ? 'ring-4 ring-green-300' : ''
+                    }`}
                   >
+                    {isPresetActive(0.22, 0.87, 0.55, true) && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                        ✓
+                      </div>
+                    )}
                     <div>🎓 Tutorial</div>
                     <div className="text-[10px] mt-0.5">Verständlich & freundlich</div>
                   </button>
