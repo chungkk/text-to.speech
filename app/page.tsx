@@ -42,6 +42,9 @@ export default function Home() {
   const [isPlayingGenerated, setIsPlayingGenerated] = useState(false);
   const [selectedVoiceName, setSelectedVoiceName] = useState('');
   
+  // Gender filter state
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
+  
   // Audio player states
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
@@ -73,16 +76,32 @@ export default function Home() {
       .catch(err => console.error('Failed to load voices:', err));
   }, []);
 
-  // Group voices by language
-  const germanVoices = voices.filter(v => 
-    v.language?.includes('Deutsch') || v.language?.includes('DE')
-  );
-  const englishVoices = voices.filter(v => 
-    v.language?.includes('English') || v.language?.includes('British')
-  );
-  const vietnameseVoices = voices.filter(v => 
-    v.language?.includes('Vietnamese')
-  );
+  // Helper function to determine gender from voice name
+  const getVoiceGender = (voiceName: string): 'male' | 'female' => {
+    const femaleName = ['Matilda', 'Charlotte', 'Lily', 'Sarah', 'Elli', 'Dorothy', 'Rachel', 'Domi', 'Bella', 'Emily', 'Freya', 'Grace', 'Jessica', 'Laura', 'Nicole', 'Serena'];
+    const name = voiceName.split(' ')[1] || voiceName; // Get first word after emoji
+    return femaleName.some(fn => name.includes(fn)) ? 'female' : 'male';
+  };
+
+  // Group voices by language with gender filter
+  const germanVoices = voices.filter(v => {
+    const isGerman = v.language?.includes('Deutsch') || v.language?.includes('DE');
+    if (!isGerman) return false;
+    if (genderFilter === 'all') return true;
+    return getVoiceGender(v.name) === genderFilter;
+  });
+  const englishVoices = voices.filter(v => {
+    const isEnglish = v.language?.includes('English') || v.language?.includes('British');
+    if (!isEnglish) return false;
+    if (genderFilter === 'all') return true;
+    return getVoiceGender(v.name) === genderFilter;
+  });
+  const vietnameseVoices = voices.filter(v => {
+    const isVietnamese = v.language?.includes('Vietnamese');
+    if (!isVietnamese) return false;
+    if (genderFilter === 'all') return true;
+    return getVoiceGender(v.name) === genderFilter;
+  });
 
   const handlePreviewVoice = async (voiceId: string) => {
     if (currentAudio) {
@@ -281,12 +300,14 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header currentLang={currentLang} onLanguageChange={handleLanguageChange} />
       
-      <div className="max-w-4xl mx-auto py-8 px-4">
+      <div className="max-w-[95%] mx-auto py-8 px-4">
         <div className="bg-white rounded-lg shadow-xl p-8">
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Text Input - Moved to Top */}
-            <div>
+          <form onSubmit={handleSubmit}>
+            {/* 3-Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              {/* Column 1: Text Input */}
+              <div className="lg:col-span-1">
               <label htmlFor="text" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                 <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -346,53 +367,90 @@ export default function Home() {
                   </p>
                 )}
               </div>
-            </div>
+              </div>
 
-            {/* Voice Selection */}
-            <div>
+              {/* Column 2: Voice Selection - Stimme auswählen */}
+              <div className="lg:col-span-1">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                  <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
                   </svg>
                   {t.voiceSelectionLabel}
                 </label>
-                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                  {voices.length} {t.voicesAvailable}
+                <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                  {voices.length}
                 </span>
               </div>
-              <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50">
-                <div className="space-y-3">
+              
+              {/* Gender Filter Buttons */}
+              <div className="flex gap-1 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setGenderFilter('all')}
+                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
+                    genderFilter === 'all'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t.filterAll}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenderFilter('male')}
+                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
+                    genderFilter === 'male'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t.filterMale}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenderFilter('female')}
+                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
+                    genderFilter === 'female'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t.filterFemale}
+                </button>
+              </div>
+              <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-1.5 bg-gray-50">
+                <div className="space-y-2">
                   {/* German Voices */}
                   {germanVoices.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-bold text-gray-700 mb-1.5 px-1 flex items-center gap-1">
+                      <h4 className="text-[10px] font-bold text-gray-700 mb-1 px-0.5 flex items-center gap-1">
                         {t.germanVoices}
                         <span className="text-gray-500 font-normal">({germanVoices.length})</span>
                       </h4>
-                      <div className="grid gap-1.5">
+                      <div className="grid gap-1">
                         {germanVoices.map((voice) => (
                           <div
                             key={voice.id}
-                            className={`border rounded-md p-2 cursor-pointer transition-all bg-white ${
+                            className={`border rounded p-1.5 cursor-pointer transition-all bg-white ${
                               selectedVoiceId === voice.id
-                                ? 'border-blue-500 ring-2 ring-blue-200 shadow-sm'
-                                : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                                ? 'border-blue-500 ring-1 ring-blue-200'
+                                : 'border-gray-200 hover:border-blue-300'
                             }`}
                             onClick={() => setSelectedVoiceId(voice.id)}
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <input
                                 type="radio"
                                 name="voice"
                                 value={voice.id}
                                 checked={selectedVoiceId === voice.id}
                                 onChange={() => setSelectedVoiceId(voice.id)}
-                                className="w-3.5 h-3.5 text-blue-600 flex-shrink-0"
+                                className="w-3 h-3 text-blue-600 flex-shrink-0"
                               />
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 text-xs truncate">{voice.name}</h3>
-                                <p className="text-[10px] text-gray-500 truncate leading-tight">{voice.description}</p>
+                                <h3 className="font-semibold text-gray-900 text-[10px] truncate">{voice.name}</h3>
+                                <p className="text-[9px] text-gray-500 truncate leading-tight">{voice.description}</p>
                               </div>
                               <button
                                 type="button"
@@ -401,18 +459,18 @@ export default function Home() {
                                   handlePreviewVoice(voice.id);
                                 }}
                                 disabled={loading}
-                                className="px-2 py-1 bg-green-600 text-white text-[10px] rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center gap-1 flex-shrink-0"
+                                className="px-1.5 py-0.5 bg-green-600 text-white text-[9px] rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center gap-0.5 flex-shrink-0"
                               >
                                 {previewingVoiceId === voice.id ? (
                                   <>
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                                     </svg>
                                     {t.stopButton}
                                   </>
                                 ) : (
                                   <>
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                                     </svg>
                                     {t.previewButton}
@@ -426,137 +484,14 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* English Voices */}
-                  {englishVoices.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-700 mb-1.5 px-1 flex items-center gap-1">
-                        {t.englishVoices}
-                        <span className="text-gray-500 font-normal">({englishVoices.length})</span>
-                      </h4>
-                      <div className="grid gap-1.5">
-                        {englishVoices.map((voice) => (
-                          <div
-                            key={voice.id}
-                            className={`border rounded-md p-2 cursor-pointer transition-all bg-white ${
-                              selectedVoiceId === voice.id
-                                ? 'border-blue-500 ring-2 ring-blue-200 shadow-sm'
-                                : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
-                            }`}
-                            onClick={() => setSelectedVoiceId(voice.id)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="voice"
-                                value={voice.id}
-                                checked={selectedVoiceId === voice.id}
-                                onChange={() => setSelectedVoiceId(voice.id)}
-                                className="w-3.5 h-3.5 text-blue-600 flex-shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 text-xs truncate">{voice.name}</h3>
-                                <p className="text-[10px] text-gray-500 truncate leading-tight">{voice.description}</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePreviewVoice(voice.id);
-                                }}
-                                disabled={loading}
-                                className="px-2 py-1 bg-green-600 text-white text-[10px] rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center gap-1 flex-shrink-0"
-                              >
-                                {previewingVoiceId === voice.id ? (
-                                  <>
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    {t.stopButton}
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                    </svg>
-                                    {t.previewButton}
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Vietnamese Voices */}
-                  {vietnameseVoices.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-700 mb-1.5 px-1 flex items-center gap-1">
-                        {t.vietnameseVoices}
-                        <span className="text-gray-500 font-normal">({vietnameseVoices.length})</span>
-                      </h4>
-                      <div className="grid gap-1.5">
-                        {vietnameseVoices.map((voice) => (
-                    <div
-                      key={voice.id}
-                      className={`border rounded-md p-2 cursor-pointer transition-all bg-white ${
-                        selectedVoiceId === voice.id
-                          ? 'border-blue-500 ring-2 ring-blue-200 shadow-sm'
-                          : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
-                      }`}
-                      onClick={() => setSelectedVoiceId(voice.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="voice"
-                          value={voice.id}
-                          checked={selectedVoiceId === voice.id}
-                          onChange={() => setSelectedVoiceId(voice.id)}
-                          className="w-3.5 h-3.5 text-blue-600 flex-shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 text-xs truncate">{voice.name}</h3>
-                          <p className="text-[10px] text-gray-500 truncate leading-tight">{voice.description}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePreviewVoice(voice.id);
-                          }}
-                          disabled={loading}
-                          className="px-2 py-1 bg-green-600 text-white text-[10px] rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center gap-1 flex-shrink-0"
-                        >
-                          {previewingVoiceId === voice.id ? (
-                            <>
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              {t.stopButton}
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                              </svg>
-                              {t.previewButton}
-                            </>
-                          )}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
+              </div>
 
-            {/* Voice Settings for Expressive Speech */}
-            <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+              {/* Column 3: Voice Settings - Schnelleinstellungen */}
+              <div className="lg:col-span-1">
+            <div className="border border-blue-200 rounded-lg p-4 bg-blue-50 h-full">
               <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
@@ -864,58 +799,8 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Advanced Info Panel */}
-              <div className="mt-3 pt-3 border-t border-blue-200">
-                <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg text-xs">
-                  <p className="font-bold text-blue-900 mb-2 flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                    {t.parameterGuideTitle}
-                  </p>
-                  <div className="grid md:grid-cols-2 gap-2 text-blue-900">
-                    <div className="bg-white/50 p-2 rounded">
-                      <p className="font-semibold mb-1">🎚️ {t.stabilityGuide}</p>
-                      <ul className="space-y-0.5 text-[11px]">
-                        <li>• <strong>0.1-0.2</strong>: Extrem expressiv, viele Emotionen</li>
-                        <li>• <strong>0.3-0.4</strong>: Ausdrucksstark aber kontrolliert</li>
-                        <li>• <strong>0.5-0.6</strong>: Ausgewogen & natürlich</li>
-                        <li>• <strong>0.7-0.9</strong>: Sehr stabil, monotoner</li>
-                      </ul>
-                    </div>
-                    <div className="bg-white/50 p-2 rounded">
-                      <p className="font-semibold mb-1">🔊 {t.similarityGuide}</p>
-                      <ul className="space-y-0.5 text-[11px]">
-                        <li>• <strong>0.85-0.95</strong>: Sehr authentisch wie Original</li>
-                        <li>• <strong>0.75-0.84</strong>: Gute Balance</li>
-                        <li>• <strong>0.5-0.74</strong>: Mehr kreative Freiheit</li>
-                        <li>• <strong>Höher = deutscher klingen!</strong></li>
-                      </ul>
-                    </div>
-                    <div className="bg-white/50 p-2 rounded">
-                      <p className="font-semibold mb-1">🎨 {t.styleGuide}</p>
-                      <ul className="space-y-0.5 text-[11px]">
-                        <li>• <strong>0.7-0.9</strong>: Sehr dramatisch & theatralisch</li>
-                        <li>• <strong>0.4-0.6</strong>: Deutlich ausdrucksvoll</li>
-                        <li>• <strong>0.2-0.3</strong>: Subtile Betonung</li>
-                        <li>• <strong>0</strong>: Neutral, keine Übertreibung</li>
-                      </ul>
-                    </div>
-                    <div className="bg-white/50 p-2 rounded">
-                      <p className="font-semibold mb-1">🔥 {t.speakerBoostGuide}</p>
-                      <ul className="space-y-0.5 text-[11px]">
-                        <li>• <strong>ON</strong>: Maximale Ähnlichkeit zum Sprecher</li>
-                        <li>• Verstärkt deutsche Akzentmerkmale</li>
-                        <li>• <strong>Empfohlen: Immer ON für Deutsch!</strong></li>
-                        <li>• Kann Latenz leicht erhöhen</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-yellow-900">
-                    <p className="font-bold mb-1">{t.proTipTitle}</p>
-                    <p className="text-[11px]">{t.proTipContent}</p>
-                  </div>
-                </div>
+
+            </div>
               </div>
             </div>
 

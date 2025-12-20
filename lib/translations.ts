@@ -23,6 +23,9 @@ export interface Translations {
   germanVoices: string;
   englishVoices: string;
   vietnameseVoices: string;
+  filterAll: string;
+  filterMale: string;
+  filterFemale: string;
   
   // Voice Settings
   voiceSettingsTitle: string;
@@ -116,6 +119,9 @@ export const translations: Record<Language, Translations> = {
     germanVoices: '🇩🇪 Deutsche Stimmen',
     englishVoices: '🇺🇸 English Voices',
     vietnameseVoices: '🇻🇳 Giọng Tiếng Việt',
+    filterAll: 'Alle',
+    filterMale: '♂️ Männlich',
+    filterFemale: '♀️ Weiblich',
     
     // Voice Settings
     voiceSettingsTitle: 'Stimmeneinstellungen (Voice Settings)',
@@ -208,6 +214,9 @@ export const translations: Record<Language, Translations> = {
     germanVoices: '🇩🇪 German Voices',
     englishVoices: '🇺🇸 English Voices',
     vietnameseVoices: '🇻🇳 Vietnamese Voices',
+    filterAll: 'All',
+    filterMale: '♂️ Male',
+    filterFemale: '♀️ Female',
     
     // Voice Settings
     voiceSettingsTitle: 'Voice Settings',
@@ -300,6 +309,9 @@ export const translations: Record<Language, Translations> = {
     germanVoices: '🇩🇪 Giọng Tiếng Đức',
     englishVoices: '🇺🇸 Giọng Tiếng Anh',
     vietnameseVoices: '🇻🇳 Giọng Tiếng Việt',
+    filterAll: 'Tất cả',
+    filterMale: '♂️ Nam',
+    filterFemale: '♀️ Nữ',
     
     // Voice Settings
     voiceSettingsTitle: 'Cài Đặt Giọng Nói',
