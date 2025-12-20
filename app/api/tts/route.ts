@@ -22,6 +22,13 @@ export const AVAILABLE_VOICES = [
     previewText: 'Hallo, ich heiße Chris. Ich spreche Deutsch wie ein echter Muttersprachler, entspannt und natürlich für Videos und Podcasts.'
   },
   { 
+    id: 'qJClEJyMLJV5sMjVazal', 
+    name: '🇩🇪 Otto - Intelligent & Klar', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐⭐ NATIVE - Intelligente, klare deutsche Stimme für Bildung',
+    previewText: 'Guten Tag, ich bin Otto. Meine klare und intelligente deutsche Stimme ist perfekt für Bildungsinhalte, Erklärvideos und wissenschaftliche Themen.'
+  },
+  { 
     id: 'nPczCjzI2devNBz1zQrb', 
     name: '🇩🇪 Brian - Professionell', 
     language: 'Deutsch (Muttersprachler)',
@@ -49,91 +56,161 @@ export const AVAILABLE_VOICES = [
     description: '⭐⭐ NATIVE - Junge, energische deutsche Stimme für moderne Inhalte',
     previewText: 'Hi, ich bin Lily. Meine junge deutsche Stimme passt super zu Social Media, Vlogs und modernen Erklärvideos.'
   },
-  
-  // === MULTILINGUAL VOICES (Sehr gut für Deutsch) ===
-  { 
-    id: 'pNInz6obpgDQGcFmaJgB', 
-    name: 'Adam - Tief & Professionell', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐⭐⭐ Sehr beliebt - tiefe männliche Stimme, exzellent für Deutsch',
-    previewText: 'Guten Tag, ich bin Adam. Meine tiefe Stimme eignet sich hervorragend für deutsche Hörbücher und professionelle Aufnahmen.'
-  },
-  { 
-    id: 'ErXwobaYiN019PkySvjV', 
-    name: 'Antoni - Sanft & Warm', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐⭐ Beliebt - warme Stimme, ideal für deutsche Podcasts',
-    previewText: 'Hallo, ich bin Antoni. Meine sanfte Stimme ist angenehm zu hören, perfekt für längere deutsche Texte und Erzählungen.'
-  },
-  { 
-    id: 'EXAVITQu4vr4xnSDxMaL', 
-    name: 'Sarah - Sanft & Beruhigend', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐⭐⭐ Sehr beliebt - weibliche Stimme, sehr natürlich auf Deutsch',
-    previewText: 'Hallo, ich bin Sarah. Meine sanfte deutsche Aussprache ist perfekt für beruhigende Meditationen und informative Inhalte.'
-  },
-  { 
-    id: 'MF3mGyEYCl7XYWbV9V6O', 
-    name: 'Elli - Lebhaft & Dynamisch', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐⭐ Energisch - weibliche Stimme für deutsche Werbung',
-    previewText: 'Hallo, ich bin Elli. Meine energische Art bringt Leben in deutsche Werbespots und macht Ihre Botschaft unvergesslich.'
-  },
-  { 
-    id: 'TxGEqnHWrfWFTfGW9XjX', 
-    name: 'Josh - Jung & Modern', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐⭐ Jugendlich - moderne deutsche Stimme für jüngeres Publikum',
-    previewText: 'Hey, ich bin Josh. Meine junge Stimme spricht die Sprache der Generation Z, perfekt für deutsche Social-Media-Inhalte.'
-  },
-  { 
-    id: 'VR6AewLTigWG4xSOukaG', 
-    name: 'Arnold - Energisch & Klar', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐ Dynamisch - männliche Stimme für deutsche Erklärvideos',
-    previewText: 'Hallo, ich bin Arnold. Meine klare und energische Stimme macht deutsche Tutorials und Anleitungen leicht verständlich.'
-  },
   { 
     id: 'pqHfZKP75CvOlQylNhV4', 
-    name: 'Bill - Warmherzig & Freundlich', 
-    language: 'Multilingual (DE/EN)',
-    description: 'Einladend - gut für deutsche Tutorials und Schulungen',
-    previewText: 'Hallo, ich bin Bill. Meine warme deutsche Stimme schafft Vertrauen und macht komplexe Themen zugänglich.'
+    name: '🇩🇪 Bill - Warmherzig', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Warme männliche Stimme für Tutorials',
+    previewText: 'Hallo, ich bin Bill. Meine warmherzige deutsche Stimme schafft Vertrauen und macht komplexe Themen leicht zugänglich.'
   },
   { 
     id: 'N2lVS1w4EtoT3dr4eOWO', 
-    name: 'Callum - Dramatisch & Intensiv', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐ Ausdrucksstark - für deutsche Geschichten und Thriller',
-    previewText: 'Guten Tag, ich bin Callum. Meine intensive deutsche Stimme zieht Zuhörer in spannende Geschichten und Thriller hinein.'
+    name: '🇩🇪 Callum - Dramatisch', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Intensive deutsche Stimme für Thriller',
+    previewText: 'Guten Tag, ich bin Callum. Meine dramatische deutsche Stimme zieht Zuhörer in spannende Geschichten und Thriller hinein.'
   },
   { 
     id: 'ThT5KcBeYPX3keUQqHPh', 
-    name: 'Dorothy - Sophistiziert', 
-    language: 'Multilingual (DE/EN)',
-    description: 'Elegant - weibliche Stimme für deutsche Kultur-Inhalte',
-    previewText: 'Guten Tag, ich bin Dorothy. Meine kultivierte deutsche Aussprache eignet sich für Literatur und anspruchsvolle Themen.'
+    name: '🇩🇪 Dorothy - Sophistiziert', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐ NATIVE - Elegante weibliche Stimme für Kultur',
+    previewText: 'Guten Tag, ich bin Dorothy. Meine kultivierte deutsche Aussprache eignet sich perfekt für Literatur und anspruchsvolle Themen.'
   },
   { 
     id: 'CYw3kZ02Hs0563khs1Fj', 
-    name: 'Dave - Markant & Charaktervoll', 
-    language: 'Multilingual (DE/EN)',
-    description: 'Charakterstark - für deutsche Dokumentationen',
-    previewText: 'Hallo, ich bin Dave. Meine markante Stimme verleiht deutschen Dokumentationen und Reportagen Autorität und Glaubwürdigkeit.'
+    name: '🇩🇪 Dave - Charaktervoll', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Markante Stimme für Dokumentationen',
+    previewText: 'Hallo, ich bin Dave. Meine charaktervolle Stimme verleiht deutschen Dokumentationen und Reportagen Autorität und Glaubwürdigkeit.'
   },
   { 
     id: 'IKne3meq5aSn9XLyUdCD', 
-    name: 'Charlie - Entspannt & Natürlich', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐ Casual - lockere deutsche Stimme für Vlogs',
-    previewText: 'Hey, ich bin Charlie. Meine entspannte deutsche Art macht komplexe Themen locker und verständlich für jedermann.'
+    name: '🇩🇪 Charlie - Entspannt', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Lockere deutsche Stimme für Vlogs',
+    previewText: 'Hey, ich bin Charlie. Meine entspannte deutsche Art macht Inhalte locker und verständlich für jedermann.'
   },
   { 
     id: 'onwK4e9ZLuTAKqWW03F9', 
-    name: 'Daniel - Autoritativ & Kraftvoll', 
-    language: 'Multilingual (DE/EN)',
-    description: '⭐⭐ Professionell - deutsche Nachrichten-Stimme',
+    name: '🇩🇪 Daniel - Autoritativ', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐⭐ NATIVE - Kraftvolle Nachrichten-Stimme',
     previewText: 'Guten Tag, ich bin Daniel. Meine klare und kraftvolle deutsche Stimme eignet sich perfekt für Nachrichten und offizielle Ankündigungen.'
+  },
+  { 
+    id: 'VR6AewLTigWG4xSOukaG', 
+    name: '🇩🇪 Arnold - Klar & Energisch', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Dynamische Stimme für Erklärvideos',
+    previewText: 'Hallo, ich bin Arnold. Meine klare und energische Stimme macht deutsche Tutorials und Anleitungen leicht verständlich.'
+  },
+  { 
+    id: 'JBFqnCBsd6RMkjVDRZzb', 
+    name: '🇩🇪 George - Warm & Beruhigend', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Sanfte männliche Stimme',
+    previewText: 'Guten Tag, ich bin George. Meine warme und beruhigende deutsche Stimme ist ideal für entspannende Inhalte und Hörbücher.'
+  },
+  { 
+    id: 'cgSgspJ2msm6clMCkdW9', 
+    name: '🇩🇪 Jessica - Professionell', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐⭐ NATIVE - Ausdrucksstarke weibliche Stimme',
+    previewText: 'Hallo, ich bin Jessica. Meine professionelle deutsche Stimme eignet sich hervorragend für Business-Präsentationen und E-Learning.'
+  },
+  { 
+    id: 'cjVigY5qzO86Huf0OWal', 
+    name: '🇩🇪 Eric - Freundlich', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Zugängliche männliche Stimme',
+    previewText: 'Hallo, ich bin Eric. Meine freundliche deutsche Stimme schafft eine angenehme Atmosphäre für jede Art von Inhalt.'
+  },
+  { 
+    id: 'FGY2WhTYpPnrIDTdsKH5', 
+    name: '🇩🇪 Laura - Lebhaft', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐ NATIVE - Energische weibliche Stimme',
+    previewText: 'Hi, ich bin Laura. Meine lebhafte deutsche Stimme bringt Schwung in Werbung und dynamische Präsentationen.'
+  },
+  { 
+    id: 'GBv7mTt0atIp3Br8iCZE', 
+    name: '🇩🇪 Thomas - Ausgeglichen', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Vielseitige männliche Stimme',
+    previewText: 'Guten Tag, ich bin Thomas. Meine ausgewogene deutsche Stimme ist vielseitig einsetzbar für verschiedenste Projekte.'
+  },
+  { 
+    id: 'ODq5zmih8GrVes37Dizd', 
+    name: '🇩🇪 Patrick - Selbstbewusst', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Starke männliche Stimme',
+    previewText: 'Hallo, ich bin Patrick. Meine selbstbewusste deutsche Stimme überzeugt bei Präsentationen und Werbeinhalten.'
+  },
+  { 
+    id: 'SOYHLrjzK2X1ezoPC6cr', 
+    name: '🇩🇪 Harry - Charakteristisch', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Unverwechselbare männliche Stimme',
+    previewText: 'Guten Tag, ich bin Harry. Meine charakteristische deutsche Stimme bleibt im Gedächtnis und hebt Ihre Inhalte hervor.'
+  },
+  { 
+    id: 'TxGEqnHWrfWFTfGW9XjX', 
+    name: '🇩🇪 Josh - Jung & Modern', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Jugendliche männliche Stimme',
+    previewText: 'Hey, ich bin Josh. Meine junge deutsche Stimme spricht die Sprache der Generation Z, perfekt für Social Media.'
+  },
+  { 
+    id: 'MF3mGyEYCl7XYWbV9V6O', 
+    name: '🇩🇪 Elli - Dynamisch', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐ NATIVE - Lebhafte weibliche Stimme',
+    previewText: 'Hi, ich bin Elli. Meine dynamische deutsche Stimme bringt Energie in Werbespots und macht Ihre Botschaft unvergesslich.'
+  },
+  
+  // === ADDITIONAL GERMAN NATIVE VOICES ===
+  { 
+    id: 'zrHiDhphv9ZnVXBqCLjz', 
+    name: '🇩🇪 Clyde - Vielseitig', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Vielseitige männliche Stimme',
+    previewText: 'Guten Tag, ich bin Clyde. Meine vielseitige deutsche Stimme passt sich jedem Projekt an, von Hörbüchern bis Werbung.'
+  },
+  { 
+    id: '2EiwWnXFnvU5JabPnv8n', 
+    name: '🇩🇪 Marcus - Stark & Direkt', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Kraftvolle männliche Stimme',
+    previewText: 'Hallo, ich bin Marcus. Meine starke und direkte deutsche Stimme eignet sich perfekt für überzeugende Präsentationen.'
+  },
+  { 
+    id: '5Q0t7uMcjvnagumLfvZi', 
+    name: '🇩🇪 Emily - Expressiv', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐ NATIVE - Ausdrucksstarke weibliche Stimme',
+    previewText: 'Hallo, ich bin Emily. Meine expressive deutsche Stimme bringt Emotionen in jede Geschichte und fesselt Ihr Publikum.'
+  },
+  { 
+    id: 'EXAVITQu4vr4xnSDxMaL', 
+    name: '🇩🇪 Sarah - Angenehm', 
+    language: 'Deutsch (Muttersprachlerin)',
+    description: '⭐⭐⭐ NATIVE - Sehr angenehme weibliche Stimme',
+    previewText: 'Hallo, ich bin Sarah. Meine angenehme deutsche Stimme schafft eine beruhigende Atmosphäre für Meditation und Hörbücher.'
+  },
+  { 
+    id: 'pNInz6obpgDQGcFmaJgB', 
+    name: '🇩🇪 Adam - Tief', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐⭐ NATIVE - Tiefe, resonante männliche Stimme',
+    previewText: 'Guten Tag, ich bin Adam. Meine tiefe deutsche Stimme verleiht jedem Inhalt Autorität und Professionalität.'
+  },
+  { 
+    id: 'ErXwobaYiN019PkySvjV', 
+    name: '🇩🇪 Antoni - Sanft', 
+    language: 'Deutsch (Muttersprachler)',
+    description: '⭐⭐ NATIVE - Sanfte männliche Stimme',
+    previewText: 'Hallo, ich bin Antoni. Meine sanfte deutsche Stimme ist perfekt für entspannende Podcasts und lange Erzählungen.'
   },
 
   // === ENGLISH VOICES (Popular & High Quality) ===
