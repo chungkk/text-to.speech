@@ -139,10 +139,13 @@ export default function LongTextSplitter() {
     let apiKeyIndex = 0;
 
     console.log(`📏 Splitting text by API quotas:`, apiKeys.map(k => `${k.name}: ${k.remainingTokens}`));
+    console.log(`📄 Total text length: ${text.length} chars`);
 
     while (startIndex < text.length && apiKeyIndex < apiKeys.length) {
       const currentApiKey = apiKeys[apiKeyIndex];
       const remainingText = text.length - startIndex;
+      
+      console.log(`\n🔍 Processing with ${currentApiKey.name} (${currentApiKey.remainingTokens} tokens), remaining text: ${remainingText} chars`);
       
       // Safety buffer: use 200 chars less than quota, max 9999
       const safeMaxLength = Math.min(currentApiKey.remainingTokens - 200, 9999);
@@ -157,11 +160,14 @@ export default function LongTextSplitter() {
 
       // If remaining text fits in this API's quota
       if (remainingText <= safeMaxLength) {
+        const finalChunk = text.slice(startIndex).trim();
         chunks.push({
-          chunk: text.slice(startIndex),
+          chunk: finalChunk,
           suggestedApiKey: currentApiKey.name,
           maxTokens: currentApiKey.remainingTokens
         });
+        console.log(`✅ Final chunk: ${finalChunk.length} chars (fits in quota)`);
+        startIndex = text.length; // Mark as completed
         break;
       }
 
@@ -181,7 +187,7 @@ export default function LongTextSplitter() {
       } else {
         const lastSpace = segment.lastIndexOf(' ');
         if (lastSpace > minLength) {
-          endIndex = startIndex + lastSpace;
+          endIndex = startIndex + lastSpace + 1; // +1 to skip the space
         }
       }
 
@@ -191,6 +197,13 @@ export default function LongTextSplitter() {
         suggestedApiKey: currentApiKey.name,
         maxTokens: currentApiKey.remainingTokens
       });
+      
+      console.log(`📦 Chunk ${chunks.length}: ${chunkText.length} chars, endIndex: ${endIndex}`);
+
+      // Skip whitespace at the beginning of next chunk
+      while (endIndex < text.length && /\s/.test(text[endIndex])) {
+        endIndex++;
+      }
 
       startIndex = endIndex;
       apiKeyIndex++; // Move to next API key
@@ -198,12 +211,19 @@ export default function LongTextSplitter() {
 
     // If text still remaining but no more API keys, warn user
     if (startIndex < text.length) {
-      console.error(`❌ Ran out of API keys! Remaining text: ${text.length - startIndex} chars`);
-      setError(`Không đủ API keys để chia hết text. Còn thiếu ${text.length - startIndex} ký tự. Vui lòng thêm API keys hoặc chia text nhỏ hơn.`);
+      const remaining = text.length - startIndex;
+      console.error(`❌ Ran out of API keys! Remaining text: ${remaining} chars`);
+      console.error(`Remaining text preview: "${text.slice(startIndex, startIndex + 100)}..."`);
+      setError(`Không đủ API keys để chia hết text. Còn thiếu ${remaining} ký tự. Vui lòng thêm API keys hoặc chia text nhỏ hơn.`);
     }
 
-    console.log(`✅ Split into ${chunks.length} chunks using ${apiKeyIndex} API keys`);
-    chunks.forEach((c, i) => console.log(`  ${i+1}. ${c.chunk.length} chars → ${c.suggestedApiKey}`));
+    const totalCharsInChunks = chunks.reduce((sum, c) => sum + c.chunk.length, 0);
+    console.log(`\n✅ Split complete:`);
+    console.log(`   - ${chunks.length} chunks using ${apiKeyIndex} API keys`);
+    console.log(`   - Original text: ${text.length} chars`);
+    console.log(`   - Total in chunks: ${totalCharsInChunks} chars`);
+    console.log(`   - Difference: ${text.length - totalCharsInChunks} chars (whitespace trimmed)`);
+    chunks.forEach((c, i) => console.log(`   ${i+1}. ${c.chunk.length} chars → ${c.suggestedApiKey}`));
 
     return chunks;
   };
