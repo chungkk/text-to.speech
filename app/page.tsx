@@ -40,6 +40,7 @@ export default function Home() {
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [generatedAudio, setGeneratedAudio] = useState<{ blob: Blob; url: string } | null>(null);
   const [isPlayingGenerated, setIsPlayingGenerated] = useState(false);
+  const [selectedVoiceName, setSelectedVoiceName] = useState('');
   
   // Audio player states
   const [audioDuration, setAudioDuration] = useState(0);
@@ -170,6 +171,12 @@ export default function Home() {
         setAudioDuration(audio.duration);
       };
       setAudioSize(blob.size);
+      
+      // Save selected voice name
+      const selectedVoice = voices.find(v => v.id === selectedVoiceId);
+      if (selectedVoice) {
+        setSelectedVoiceName(selectedVoice.name);
+      }
       
       setGeneratedAudio({ blob, url });
       
@@ -876,12 +883,22 @@ export default function Home() {
                   {/* Audio Player Card */}
                   <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-lg">
                     <div className="flex items-center justify-between mb-4">
-                      <p className="text-green-800 font-bold text-lg flex items-center gap-2">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        {t.audioCreated}
-                      </p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-green-800 font-bold text-lg flex items-center gap-2">
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          {t.audioCreated}
+                        </p>
+                        {selectedVoiceName && (
+                          <p className="text-green-700 text-sm flex items-center gap-1 ml-8">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-semibold">{selectedVoiceName}</span>
+                          </p>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3 text-xs text-green-700">
                         <div className="flex items-center gap-1 bg-white/60 px-2 py-1 rounded">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
