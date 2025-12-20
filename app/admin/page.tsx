@@ -14,6 +14,13 @@ interface ApiKey {
   createdAt: string;
 }
 
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export default function AdminPage() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,13 +28,21 @@ export default function AdminPage() {
   const [newKey, setNewKey] = useState({ name: '', key: '', totalTokens: 10000 });
   const [error, setError] = useState('');
   const [checkingQuota, setCheckingQuota] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0
+  });
 
-  const fetchKeys = async () => {
+  const fetchKeys = async (page = 1) => {
     try {
-      const response = await fetch('/api/keys');
+      setLoading(true);
+      const response = await fetch(`/api/keys?page=${page}&limit=${pagination.limit}`);
       const data = await response.json();
       if (data.success) {
         setKeys(data.data);
+        setPagination(data.pagination);
       }
     } catch (err) {
       setError('Failed to fetch API keys');
@@ -55,7 +70,7 @@ export default function AdminPage() {
       if (data.success) {
         setNewKey({ name: '', key: '', totalTokens: 10000 });
         setShowAddForm(false);
-        fetchKeys();
+        fetchKeys(pagination.page);
       } else {
         setError(data.error);
       }
@@ -73,7 +88,7 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
-        fetchKeys();
+        fetchKeys(pagination.page);
       }
     } catch (err) {
       setError('Failed to update API key');
@@ -89,7 +104,7 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
-        fetchKeys();
+        fetchKeys(pagination.page);
       }
     } catch (err) {
       setError('Failed to delete API key');
@@ -110,7 +125,7 @@ export default function AdminPage() {
       const data = await response.json();
 
       if (data.success) {
-        await fetchKeys();
+        await fetchKeys(pagination.page);
         alert(
           `✓ Quota Updated!\n\n` +
           `Remaining: ${data.data.remainingCharacters.toLocaleString()} / ${data.data.characterLimit.toLocaleString()} (${data.data.percentage}%)`
@@ -285,6 +300,59 @@ export default function AdminPage() {
                   <p>No API keys found</p>
                 </div>
               )}
+            </div>
+          )}
+
+          {!loading && pagination.totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} keys
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fetchKeys(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <div className="flex gap-1">
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => {
+                    if (
+                      page === 1 ||
+                      page === pagination.totalPages ||
+                      (page >= pagination.page - 2 && page <= pagination.page + 2)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => fetchKeys(page)}
+                          className={`px-3 py-2 rounded ${
+                            page === pagination.page
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (
+                      page === pagination.page - 3 ||
+                      page === pagination.page + 3
+                    ) {
+                      return <span key={page} className="px-2 py-2">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+                <button
+                  onClick={() => fetchKeys(pagination.page + 1)}
+                  disabled={pagination.page === pagination.totalPages}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

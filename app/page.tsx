@@ -827,145 +827,148 @@ export default function Home() {
               </div>
             )}
 
-            {!generatedAudio ? (
-              <div className="sticky bottom-0 left-0 right-0 bg-white pt-4 pb-2 -mx-8 px-8 border-t-2 border-blue-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
-                <button
-                  type="submit"
-                  disabled={loading || text.length < 100 || text.length > 10000}
-                  className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-3">
-                      <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          fill="none"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      <span className="text-base">{t.generating}</span>
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                      </svg>
-                      {t.generateButton}
-                    </span>
-                  )}
-                </button>
-                {text.length < 100 && text.length > 0 && (
-                  <p className="text-center text-xs text-red-600 mt-2">
-                    {t.charactersRemaining.replace('{count}', (100 - text.length).toString())}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Audio Player Card */}
-                <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-lg">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-green-800 font-bold text-lg flex items-center gap-2">
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      {t.audioCreated}
+            {/* MP3 Generation Button / Audio Result - Same Position */}
+            <div className="sticky bottom-0 left-0 right-0 bg-white pt-4 pb-2 -mx-8 px-8 border-t-2 border-blue-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
+              {!generatedAudio ? (
+                <>
+                  <button
+                    type="submit"
+                    disabled={loading || text.length < 100 || text.length > 10000}
+                    className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
+                  >
+                    {loading ? (
+                      <span className="flex items-center justify-center gap-3">
+                        <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        <span className="text-base">{t.generating}</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                        </svg>
+                        {t.generateButton}
+                      </span>
+                    )}
+                  </button>
+                  {text.length < 100 && text.length > 0 && (
+                    <p className="text-center text-xs text-red-600 mt-2">
+                      {t.charactersRemaining.replace('{count}', (100 - text.length).toString())}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-green-700">
-                      <div className="flex items-center gap-1 bg-white/60 px-2 py-1 rounded">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  )}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  {/* Audio Player Card */}
+                  <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-green-800 font-bold text-lg flex items-center gap-2">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
-                        <span className="font-semibold">{formatTime(audioDuration)}</span>
-                      </div>
-                      <div className="flex items-center gap-1 bg-white/60 px-2 py-1 rounded">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
-                          <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
-                          <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
-                        </svg>
-                        <span className="font-semibold">{formatFileSize(audioSize)}</span>
+                        {t.audioCreated}
+                      </p>
+                      <div className="flex items-center gap-3 text-xs text-green-700">
+                        <div className="flex items-center gap-1 bg-white/60 px-2 py-1 rounded">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                          <span className="font-semibold">{formatTime(audioDuration)}</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white/60 px-2 py-1 rounded">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
+                            <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
+                            <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
+                          </svg>
+                          <span className="font-semibold">{formatFileSize(audioSize)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Audio Progress Bar */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2 text-sm text-green-700">
-                      <span className="font-mono font-bold">{formatTime(audioCurrentTime)}</span>
-                      <span className="font-mono">{formatTime(audioDuration)}</span>
+                    {/* Audio Progress Bar */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2 text-sm text-green-700">
+                        <span className="font-mono font-bold">{formatTime(audioCurrentTime)}</span>
+                        <span className="font-mono">{formatTime(audioDuration)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max={audioDuration || 100}
+                        value={audioCurrentTime}
+                        onChange={handleSeek}
+                        className="w-full h-3 bg-green-200 rounded-lg appearance-none cursor-pointer accent-green-600 hover:accent-green-700"
+                        style={{
+                          background: `linear-gradient(to right, #059669 0%, #059669 ${(audioCurrentTime / (audioDuration || 1)) * 100}%, #bbf7d0 ${(audioCurrentTime / (audioDuration || 1)) * 100}%, #bbf7d0 100%)`
+                        }}
+                      />
                     </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max={audioDuration || 100}
-                      value={audioCurrentTime}
-                      onChange={handleSeek}
-                      className="w-full h-3 bg-green-200 rounded-lg appearance-none cursor-pointer accent-green-600 hover:accent-green-700"
-                      style={{
-                        background: `linear-gradient(to right, #059669 0%, #059669 ${(audioCurrentTime / (audioDuration || 1)) * 100}%, #bbf7d0 ${(audioCurrentTime / (audioDuration || 1)) * 100}%, #bbf7d0 100%)`
-                      }}
-                    />
-                  </div>
 
-                  {/* Control Buttons */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={handlePlayGenerated}
-                      className="py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                    >
-                      {isPlayingGenerated ? (
-                        <>
-                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          <span>{t.pauseButton}</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                          </svg>
-                          <span>{t.playButton}</span>
-                        </>
-                      )}
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={handleDownload}
-                      className="py-3 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                      <span>{t.downloadButton}</span>
-                    </button>
+                    {/* Control Buttons */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <button
+                        type="button"
+                        onClick={handlePlayGenerated}
+                        className="py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        {isPlayingGenerated ? (
+                          <>
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <span>{t.pauseButton}</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                            </svg>
+                            <span>{t.playButton}</span>
+                          </>
+                        )}
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={handleDownload}
+                        className="py-3 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                        <span>{t.downloadButton}</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      className="py-3 px-4 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                      </svg>
-                      <span>{t.newButton}</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={handleReset}
+                        className="py-3 px-4 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                        </svg>
+                        <span>{t.newButton}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </form>
         </div>
       </div>
