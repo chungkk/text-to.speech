@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import { Language, getTranslation } from '@/lib/translations';
+import { Language } from '@/lib/translations';
 
 interface Voice {
   id: string;
@@ -28,17 +28,22 @@ export default function LongTextSplitter() {
   // Voice and audio states
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState('');
-  const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
+  const [generatingIndexes, setGeneratingIndexes] = useState<Set<number>>(new Set());
   const [audioDataMap, setAudioDataMap] = useState<Map<number, AudioData>>(new Map());
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [error, setError] = useState('');
+  const [generatingAll, setGeneratingAll] = useState(false);
   
   // Voice Settings
   const [stability, setStability] = useState(0.3);
   const [similarityBoost, setSimilarityBoost] = useState(0.85);
   const [style, setStyle] = useState(0.5);
   const [useSpeakerBoost, setUseSpeakerBoost] = useState(true);
+
+  // Merge audio states
+  const [isMerging, setIsMerging] = useState(false);
+  const [mergeProgress, setMergeProgress] = useState(0);
 
   useEffect(() => {
     const savedLang = localStorage.getItem('appLanguage') as Language;
@@ -137,7 +142,7 @@ export default function LongTextSplitter() {
       return;
     }
 
-    setGeneratingIndex(index);
+    setGeneratingIndexes(prev => new Set(prev).add(index));
     setError('');
 
     try {
@@ -179,11 +184,41 @@ export default function LongTextSplitter() {
       };
 
       setAudioDataMap(prev => new Map(prev).set(index, audioData));
-    } catch (err: any) {
-      setError(err.message || 'Lỗi khi tạo audio');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Lỗi khi tạo audio';
+      setError(`Đoạn ${index + 1}: ${errorMessage}`);
       console.error('Audio generation error:', err);
     } finally {
-      setGeneratingIndex(null);
+      setGeneratingIndexes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(index);
+        return newSet;
+      });
+    }
+  };
+
+  const handleGenerateAllAudios = async () => {
+    if (!selectedVoiceId) {
+      setError('Vui lòng chọn giọng đọc');
+      return;
+    }
+
+    setGeneratingAll(true);
+    setError('');
+
+    // Generate all audios that don't exist yet
+    const promises = splitTexts.map(async (text, index) => {
+      if (!audioDataMap.has(index)) {
+        await handleGenerateAudio(text, index);
+      }
+    });
+
+    try {
+      await Promise.all(promises);
+    } catch (err) {
+      console.error('Error generating all audios:', err);
+    } finally {
+      setGeneratingAll(false);
     }
   };
 
@@ -259,6 +294,145 @@ export default function LongTextSplitter() {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  const handleMergeAllAudios = async () => {
+    if (audioDataMap.size === 0) {
+      setError('Không có audio nào để ghép');
+      return;
+    }
+
+    if (audioDataMap.size !== splitTexts.length) {
+      setError('Vui lòng tạo audio cho tất cả các đoạn trước khi ghép');
+      return;
+    }
+
+    setIsMerging(true);
+    setMergeProgress(0);
+    setError('');
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      const audioBuffers: AudioBuffer[] = [];
+
+      // Load all audio files
+      for (let i = 0; i < splitTexts.length; i++) {
+        const audioData = audioDataMap.get(i);
+        if (!audioData) {
+          throw new Error(`Audio cho đoạn ${i + 1} không tồn tại`);
+        }
+
+        setMergeProgress(((i + 1) / splitTexts.length) * 50); // 0-50% for loading
+
+        const arrayBuffer = await audioData.blob.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        audioBuffers.push(audioBuffer);
+      }
+
+      // Calculate total length
+      const totalLength = audioBuffers.reduce((sum, buffer) => sum + buffer.length, 0);
+      const numberOfChannels = audioBuffers[0].numberOfChannels;
+      const sampleRate = audioBuffers[0].sampleRate;
+
+      // Create merged buffer
+      const mergedBuffer = audioContext.createBuffer(
+        numberOfChannels,
+        totalLength,
+        sampleRate
+      );
+
+      // Copy all buffers into merged buffer
+      let offset = 0;
+      for (let i = 0; i < audioBuffers.length; i++) {
+        const buffer = audioBuffers[i];
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+          const channelData = buffer.getChannelData(channel);
+          mergedBuffer.copyToChannel(channelData, channel, offset);
+        }
+        offset += buffer.length;
+        setMergeProgress(50 + ((i + 1) / audioBuffers.length) * 50); // 50-100% for merging
+      }
+
+      // Convert to WAV
+      const wavBlob = await audioBufferToWav(mergedBuffer);
+      
+      // Download
+      const url = window.URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `merged-audio-${Date.now()}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      alert(`✅ Đã ghép thành công ${splitTexts.length} audio!`);
+    } catch (err) {
+      console.error('Merge error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Lỗi khi ghép audio: ${errorMessage}`);
+    } finally {
+      setIsMerging(false);
+      setMergeProgress(0);
+    }
+  };
+
+  // Convert AudioBuffer to WAV blob
+  const audioBufferToWav = (buffer: AudioBuffer): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const numberOfChannels = buffer.numberOfChannels;
+      const sampleRate = buffer.sampleRate;
+      const format = 1; // PCM
+      const bitDepth = 16;
+
+      const bytesPerSample = bitDepth / 8;
+      const blockAlign = numberOfChannels * bytesPerSample;
+
+      const data = [];
+      for (let i = 0; i < buffer.length; i++) {
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+          const sample = buffer.getChannelData(channel)[i];
+          const intSample = Math.max(-1, Math.min(1, sample));
+          data.push(intSample < 0 ? intSample * 0x8000 : intSample * 0x7FFF);
+        }
+      }
+
+      const dataLength = data.length * bytesPerSample;
+      const bufferLength = 44 + dataLength;
+      const arrayBuffer = new ArrayBuffer(bufferLength);
+      const view = new DataView(arrayBuffer);
+
+      const writeString = (offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
+
+      // WAV header
+      writeString(0, 'RIFF');
+      view.setUint32(4, bufferLength - 8, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true); // fmt chunk size
+      view.setUint16(20, format, true);
+      view.setUint16(22, numberOfChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * blockAlign, true); // byte rate
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitDepth, true);
+      writeString(36, 'data');
+      view.setUint32(40, dataLength, true);
+
+      // Write audio data
+      let offset = 44;
+      for (let i = 0; i < data.length; i++) {
+        view.setInt16(offset, data[i], true);
+        offset += 2;
+      }
+
+      resolve(new Blob([arrayBuffer], { type: 'audio/wav' }));
+    });
   };
 
   return (
@@ -605,19 +779,72 @@ export default function LongTextSplitter() {
                 <div className="flex justify-between items-center p-4 bg-purple-50 rounded-xl">
                   <div className="text-lg font-semibold text-purple-900">
                     Đã chia thành {splitTexts.length} đoạn
-                  </div>
-                  <div className="flex gap-3">
                     {audioDataMap.size > 0 && (
+                      <span className="text-sm text-green-600 ml-2">
+                        ({audioDataMap.size}/{splitTexts.length} audio)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-3 flex-wrap">
+                    {/* Generate All Button */}
+                    {audioDataMap.size < splitTexts.length && (
                       <button
-                        onClick={handleDownloadAllAudios}
-                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                        onClick={handleGenerateAllAudios}
+                        disabled={generatingAll || generatingIndexes.size > 0}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
                       >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
-                        </svg>
-                        Download Tất Cả Audio
+                        {generatingAll || generatingIndexes.size > 0 ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Đang tạo {generatingIndexes.size} audio...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+                            </svg>
+                            🎵 Tạo Tất Cả Audio
+                          </>
+                        )}
                       </button>
+                    )}
+                    {audioDataMap.size > 0 && (
+                      <>
+                        <button
+                          onClick={handleMergeAllAudios}
+                          disabled={isMerging || audioDataMap.size !== splitTexts.length}
+                          className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-2 rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+                        >
+                          {isMerging ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Đang ghép {mergeProgress.toFixed(0)}%
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+                              </svg>
+                              🎵 Ghép Tất Cả Audio
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={handleDownloadAllAudios}
+                          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
+                          </svg>
+                          Download Riêng Lẻ
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={handleCopyAll}
@@ -630,7 +857,7 @@ export default function LongTextSplitter() {
 
                 {splitTexts.map((chunk, index) => {
                   const audioData = audioDataMap.get(index);
-                  const isGenerating = generatingIndex === index;
+                  const isGenerating = generatingIndexes.has(index);
                   const isPlaying = playingIndex === index;
 
                   return (
