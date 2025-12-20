@@ -145,8 +145,6 @@ export default function AdminPage() {
   };
 
   const handleRefreshAll = async () => {
-    if (!confirm('Refresh quota for all API keys?')) return;
-    
     setRefreshingAll(true);
     setError('');
     setSuccess('');
@@ -238,7 +236,7 @@ export default function AdminPage() {
                     type="text"
                     value={newKey.name}
                     onChange={(e) => setNewKey({ ...newKey, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                     placeholder="Key name"
                     required
                   />
@@ -249,7 +247,7 @@ export default function AdminPage() {
                     type="text"
                     value={newKey.key}
                     onChange={(e) => setNewKey({ ...newKey, key: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono bg-white text-gray-900"
                     placeholder="sk_xxxxx"
                     required
                   />
@@ -260,7 +258,7 @@ export default function AdminPage() {
                     type="number"
                     value={newKey.totalTokens}
                     onChange={(e) => setNewKey({ ...newKey, totalTokens: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                     placeholder="10000"
                     required
                   />
