@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import ApiKey from '@/models/ApiKey';
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
-import { checkRateLimit, getClientIdentifier } from '@/lib/rateLimiter';
 
 // Available voices - German voices (Most popular and high quality)
 export const AVAILABLE_VOICES = [
@@ -457,31 +456,6 @@ async function updateApiKeyUsage(keyId: string, tokensUsed: number) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting check
-    const clientId = getClientIdentifier(request);
-    const rateLimit = checkRateLimit(clientId, {
-      maxRequests: 60, // 60 requests
-      windowMs: 60 * 60 * 1000 // per hour
-    });
-
-    if (!rateLimit.allowed) {
-      const resetDate = new Date(rateLimit.resetTime);
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `Rate limit exceeded. Try again at ${resetDate.toLocaleTimeString()}`,
-          resetTime: rateLimit.resetTime
-        },
-        { 
-          status: 429,
-          headers: {
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': rateLimit.resetTime.toString()
-          }
-        }
-      );
-    }
-
     const body = await request.json();
     const { text, voiceId, voiceSettings } = body;
 
@@ -615,8 +589,6 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'audio/mpeg',
         'Content-Disposition': 'attachment; filename="speech.mp3"',
-        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-        'X-RateLimit-Reset': rateLimit.resetTime.toString(),
       },
     });
   } catch (error: any) {
