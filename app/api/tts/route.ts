@@ -339,6 +339,47 @@ export const AVAILABLE_VOICES = [
 
 const CHARACTERS_PER_TOKEN = 1;
 
+async function syncQuotaFromElevenLabs(apiKey: any) {
+  try {
+    const response = await fetch('https://api.elevenlabs.io/v1/user/subscription', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'xi-api-key': apiKey.key,
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to sync quota for ${apiKey.name}: HTTP ${response.status}`);
+      return null;
+    }
+
+    const subscription = await response.json();
+    const characterCount = subscription.character_count || 0;
+    const characterLimit = subscription.character_limit || 10000;
+    const remainingCharacters = characterLimit - characterCount;
+
+    // Update database with real quota
+    await ApiKey.findByIdAndUpdate(apiKey._id, {
+      remainingTokens: remainingCharacters,
+      totalTokens: characterLimit,
+      isActive: remainingCharacters > 0, // Auto-reactivate if has quota
+    });
+
+    console.log(`✓ Synced ${apiKey.name}: ${remainingCharacters}/${characterLimit} remaining`);
+    
+    return {
+      ...apiKey.toObject(),
+      remainingTokens: remainingCharacters,
+      totalTokens: characterLimit,
+      isActive: remainingCharacters > 0,
+    };
+  } catch (error) {
+    console.error(`Error syncing quota for ${apiKey.name}:`, error);
+    return null;
+  }
+}
+
 async function getAvailableApiKey(requiredTokens: number, excludeIds: string[] = []) {
   await connectDB();
   
@@ -353,9 +394,34 @@ async function getAvailableApiKey(requiredTokens: number, excludeIds: string[] =
   
   let apiKey = await ApiKey.findOne(query).sort({ remainingTokens: -1 });
 
-  // If no key with enough tokens, try any active key (DB might be outdated)
+  // Auto-refresh if key hasn't been synced recently
+  if (apiKey) {
+    const lastUpdated = apiKey.updatedAt || apiKey.createdAt;
+    const hoursSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
+    
+    // If key not updated in 6 hours, sync quota
+    if (hoursSinceUpdate > 6) {
+      console.log(`⏰ Key ${apiKey.name} not synced for ${hoursSinceUpdate.toFixed(1)}h, refreshing...`);
+      const syncedKey = await syncQuotaFromElevenLabs(apiKey);
+      if (syncedKey) {
+        apiKey = syncedKey;
+      }
+    }
+  }
+
+  // If no key found, try syncing all active keys
   if (!apiKey && excludeIds.length === 0) {
-    apiKey = await ApiKey.findOne({ isActive: true }).sort({ remainingTokens: -1 });
+    console.log('⚠ No key with sufficient quota in DB, trying to sync all active keys...');
+    
+    const allActiveKeys = await ApiKey.find({ isActive: true }).sort({ remainingTokens: -1 });
+    
+    for (const key of allActiveKeys) {
+      const syncedKey = await syncQuotaFromElevenLabs(key);
+      if (syncedKey && syncedKey.remainingTokens >= requiredTokens) {
+        console.log(`✓ Found available quota after sync: ${syncedKey.name}`);
+        return syncedKey;
+      }
+    }
   }
 
   if (!apiKey) {
@@ -487,21 +553,35 @@ export async function POST(request: NextRequest) {
         // Check if error is quota_exceeded
         if (err.message?.includes('quota_exceeded') || err.statusCode === 401) {
           if (usedApiKey) {
-            // Mark this key as out of quota
-            await ApiKey.findByIdAndUpdate(usedApiKey._id, {
-              remainingTokens: 0,
-              isActive: false,
-            });
-            excludedKeyIds.push(usedApiKey._id.toString());
+            console.log(`⚠ Quota exceeded for ${usedApiKey.name}, syncing real quota...`);
+            
+            // Sync real quota from ElevenLabs
+            const syncedKey = await syncQuotaFromElevenLabs(usedApiKey);
+            
+            if (syncedKey) {
+              // If still not enough quota after sync, exclude this key
+              if (syncedKey.remainingTokens < requiredTokens) {
+                console.log(`✗ ${syncedKey.name} confirmed out of quota (${syncedKey.remainingTokens} < ${requiredTokens})`);
+                excludedKeyIds.push(usedApiKey._id.toString());
+              } else {
+                // If actually has quota (DB was outdated), DON'T exclude and retry
+                console.log(`✓ ${syncedKey.name} still has quota! Retrying with this key...`);
+                // Don't add to excludedKeyIds, next loop will select this key again
+                continue; // Skip increment retryCount
+              }
+            } else {
+              // Failed to sync, treat as broken key
+              excludedKeyIds.push(usedApiKey._id.toString());
+            }
           }
           
           retryCount++;
           
           if (retryCount >= maxRetries) {
-            throw new Error('All available API keys have insufficient quota. Please check quotas in Admin Panel or add new keys.');
+            throw new Error('All available API keys have insufficient quota. Please refresh quotas in Admin Panel or add new keys.');
           }
           
-          console.log(`Retrying with another API key (attempt ${retryCount + 1}/${maxRetries})...`);
+          console.log(`🔄 Trying another API key (attempt ${retryCount + 1}/${maxRetries})...`);
         } else {
           // Other errors, don't retry
           throw err;
