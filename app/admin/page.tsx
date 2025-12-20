@@ -271,35 +271,43 @@ export default function AdminPage() {
           </div>
 
           {showAddForm && (
-            <form onSubmit={handleAddKey} className="mb-8 p-6 bg-gray-50 rounded-lg">
+            <form onSubmit={handleAddKey} className="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Add New API Key
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     Name
                   </label>
                   <input
                     type="text"
                     value={newKey.name}
                     onChange={(e) => setNewKey({ ...newKey, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 text-lg font-semibold text-gray-900 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all shadow-sm hover:border-gray-400 placeholder:text-gray-400 placeholder:font-normal"
+                    placeholder="e.g., Production Key #1"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     API Key
                   </label>
                   <input
                     type="text"
                     value={newKey.key}
                     onChange={(e) => setNewKey({ ...newKey, key: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 text-lg font-mono font-bold text-gray-900 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all shadow-sm hover:border-gray-400 placeholder:text-gray-400 placeholder:font-normal"
+                    placeholder="sk_xxxxxxxxxxxxx"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Total Tokens
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Total Tokens (Characters/Month)
                   </label>
                   <input
                     type="number"
@@ -307,17 +315,30 @@ export default function AdminPage() {
                     onChange={(e) =>
                       setNewKey({ ...newKey, totalTokens: parseInt(e.target.value) })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 text-lg font-semibold text-gray-900 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all shadow-sm hover:border-gray-400 placeholder:text-gray-400 placeholder:font-normal"
+                    placeholder="10000"
                     required
                   />
                 </div>
               </div>
-              <button
-                type="submit"
-                className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Add Key
-              </button>
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Add Key
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  className="px-6 py-3 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           )}
 
@@ -326,70 +347,66 @@ export default function AdminPage() {
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Key
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tokens
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last Used
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {keys.map((key) => (
-                    <tr key={key._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {key.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                        {key.key.substring(0, 8)}...{key.key.substring(key.key.length - 4)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex flex-col">
-                          <span>{key.remainingTokens.toLocaleString()} / {key.totalTokens.toLocaleString()}</span>
-                          <div className="w-32 bg-gray-200 rounded-full h-2 mt-1">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{
-                                width: `${(key.remainingTokens / key.totalTokens) * 100}%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+            <div className="space-y-4">
+              {keys.map((key) => (
+                <div key={key._id} className="bg-white border-2 border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all hover:border-blue-300">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-bold text-gray-900">{key.name}</h3>
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${
                             key.isActive
                               ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
                           }`}
                         >
-                          {key.isActive ? 'Active' : 'Inactive'}
+                          {key.isActive ? '✓ Active' : '✕ Inactive'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {key.lastUsed
-                          ? new Date(key.lastUsed).toLocaleString()
-                          : 'Never'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex gap-2 flex-wrap">
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                        Last used: {key.lastUsed ? new Date(key.lastUsed).toLocaleString() : 'Never'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">API Key</p>
+                      <p className="text-base font-mono text-gray-900 bg-white px-3 py-2 rounded border border-gray-300">
+                        {key.key.substring(0, 8)}...{key.key.substring(key.key.length - 4)}
+                      </p>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase">Token Usage</p>
+                        <span className="text-xs font-bold text-blue-600">
+                          {Math.round((key.remainingTokens / key.totalTokens) * 100)}%
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <span className="text-2xl font-bold text-gray-900">{key.remainingTokens.toLocaleString()}</span>
+                        <span className="text-sm text-gray-500">/ {key.totalTokens.toLocaleString()}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className={`h-3 rounded-full transition-all ${
+                            (key.remainingTokens / key.totalTokens) > 0.5 ? 'bg-green-500' :
+                            (key.remainingTokens / key.totalTokens) > 0.2 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{
+                            width: `${(key.remainingTokens / key.totalTokens) * 100}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 flex-wrap border-t border-gray-200 pt-4">
                           <button
                             onClick={() => handleCheckQuota(key._id, key.key)}
                             disabled={checkingQuota === key._id}
@@ -429,15 +446,16 @@ export default function AdminPage() {
                           >
                             Delete
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </div>
+                </div>
+              ))}
               {keys.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  No API keys found. Add one to get started.
+                <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                  <p className="text-lg font-semibold text-gray-600">No API keys found</p>
+                  <p className="text-sm text-gray-500 mt-1">Add one to get started with text-to-speech</p>
                 </div>
               )}
             </div>
