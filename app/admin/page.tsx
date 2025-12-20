@@ -27,7 +27,9 @@ export default function AdminPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newKey, setNewKey] = useState({ name: '', key: '', totalTokens: 10000 });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [checkingQuota, setCheckingQuota] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 10,
@@ -114,6 +116,7 @@ export default function AdminPage() {
   const handleCheckQuota = async (keyId: string, apiKey: string) => {
     setCheckingQuota(keyId);
     setError('');
+    setSuccess('');
 
     try {
       const response = await fetch('/api/check-quota', {
@@ -126,10 +129,11 @@ export default function AdminPage() {
 
       if (data.success) {
         await fetchKeys(pagination.page);
-        alert(
-          `✓ Quota Updated!\n\n` +
-          `Remaining: ${data.data.remainingCharacters.toLocaleString()} / ${data.data.characterLimit.toLocaleString()} (${data.data.percentage}%)`
-        );
+        const statusMessage = data.data.remainingCharacters > 0 
+          ? `✓ Quota refreshed: ${data.data.remainingCharacters.toLocaleString()} / ${data.data.characterLimit.toLocaleString()} (${data.data.percentage}%) - Key reactivated`
+          : `⚠ No remaining quota: 0 / ${data.data.characterLimit.toLocaleString()}`;
+        setSuccess(statusMessage);
+        setTimeout(() => setSuccess(''), 5000);
       } else {
         setError(data.error || 'Failed to check quota');
       }
@@ -137,6 +141,41 @@ export default function AdminPage() {
       setError(err.message || 'Failed to check quota');
     } finally {
       setCheckingQuota(null);
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    if (!confirm('Refresh quota for all API keys?')) return;
+    
+    setRefreshingAll(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/check-all-quotas', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        await fetchKeys(pagination.page);
+        
+        const { successful, failed, results } = data.data;
+        const activeKeys = results.filter((r: any) => r.success && r.remainingCharacters > 0).length;
+        
+        setSuccess(
+          `✓ Refresh Complete! Total: ${data.data.total} | Successful: ${successful} | Failed: ${failed} | Active: ${activeKeys}` +
+          (activeKeys > 0 ? ` - ${activeKeys} key(s) reactivated` : '')
+        );
+        setTimeout(() => setSuccess(''), 8000);
+      } else {
+        setError(data.error || 'Failed to refresh all quotas');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh all quotas');
+    } finally {
+      setRefreshingAll(false);
     }
   };
 
@@ -157,12 +196,36 @@ export default function AdminPage() {
             </div>
           )}
 
-          <div className="mb-4">
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded">
+              <p className="text-green-700 text-sm">{success}</p>
+            </div>
+          )}
+
+          <div className="mb-4 flex gap-3">
             <button
               onClick={() => setShowAddForm(!showAddForm)}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
             >
               {showAddForm ? 'Cancel' : '+ Add API Key'}
+            </button>
+            <button
+              onClick={handleRefreshAll}
+              disabled={refreshingAll || keys.length === 0}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Refresh quota for all API keys"
+            >
+              {refreshingAll ? (
+                <>
+                  <span className="inline-block animate-spin">⟳</span>
+                  <span>Refreshing All...</span>
+                </>
+              ) : (
+                <>
+                  <span>⟳</span>
+                  <span>Refresh All</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -269,9 +332,20 @@ export default function AdminPage() {
                           <button
                             onClick={() => handleCheckQuota(key._id, key.key)}
                             disabled={checkingQuota === key._id}
-                            className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200 disabled:opacity-50 text-sm"
+                            className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200 disabled:opacity-50 text-sm flex items-center gap-1"
+                            title="Refresh quota from ElevenLabs API"
                           >
-                            {checkingQuota === key._id ? 'Checking...' : 'Check'}
+                            {checkingQuota === key._id ? (
+                              <>
+                                <span className="inline-block animate-spin">⟳</span>
+                                <span>Refreshing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>⟳</span>
+                                <span>Refresh</span>
+                              </>
+                            )}
                           </button>
                           <button
                             onClick={() => handleToggleActive(key._id, key.isActive)}

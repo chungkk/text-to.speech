@@ -39,11 +39,18 @@ export async function POST() {
           const characterLimit = subscription.character_limit || 10000;
           const remainingCharacters = characterLimit - characterCount;
 
-          // Update database
-          await ApiKey.findByIdAndUpdate(key._id, {
+          // Update database with auto-reactivation
+          const updateData: any = {
             remainingTokens: remainingCharacters,
             totalTokens: characterLimit,
-          });
+          };
+          
+          // Auto-reactivate key if it has remaining quota
+          if (remainingCharacters > 0) {
+            updateData.isActive = true;
+          }
+          
+          await ApiKey.findByIdAndUpdate(key._id, updateData);
 
           return {
             id: key._id,

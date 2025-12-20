@@ -51,10 +51,17 @@ export async function POST(request: NextRequest) {
     // Update database if keyId provided
     if (keyId) {
       await connectDB();
-      await ApiKey.findByIdAndUpdate(keyId, {
+      const updateData: any = {
         remainingTokens: remainingCharacters,
         totalTokens: characterLimit,
-      });
+      };
+      
+      // Auto-reactivate key if it has remaining quota
+      if (remainingCharacters > 0) {
+        updateData.isActive = true;
+      }
+      
+      await ApiKey.findByIdAndUpdate(keyId, updateData);
     }
 
     return NextResponse.json({
