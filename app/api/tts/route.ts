@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
     // Rate limiting check
     const clientId = getClientIdentifier(request);
     const rateLimit = checkRateLimit(clientId, {
-      maxRequests: 20, // 20 requests
+      maxRequests: 60, // 60 requests
       windowMs: 60 * 60 * 1000 // per hour
     });
 
