@@ -19,11 +19,31 @@ interface AudioData {
   size: number;
 }
 
+interface TextChunk {
+  chunk: string;
+  suggestedApiKey: string;
+  maxTokens: number;
+}
+
+interface QuotaInfo {
+  maxTokensPerRequest: number;
+  totalAvailableTokens: number;
+  activeKeysCount: number;
+  keys: Array<{
+    name: string;
+    remainingTokens: number;
+    totalTokens: number;
+    percentageRemaining: string;
+  }>;
+}
+
 export default function LongTextSplitter() {
   const [currentLang, setCurrentLang] = useState<Language>('de');
   const [inputText, setInputText] = useState('');
-  const [splitTexts, setSplitTexts] = useState<string[]>([]);
+  const [splitTexts, setSplitTexts] = useState<TextChunk[]>([]);
   const [loading, setLoading] = useState(false);
+  const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
+  const [loadingQuota, setLoadingQuota] = useState(false);
   
   // Voice and audio states
   const [voices, setVoices] = useState<Voice[]>([]);
@@ -78,6 +98,30 @@ export default function LongTextSplitter() {
       .catch(err => console.error('Failed to load voices:', err));
   }, []);
 
+  // Fetch quota info
+  const fetchQuotaInfo = async () => {
+    setLoadingQuota(true);
+    try {
+      const response = await fetch('/api/quota');
+      const data = await response.json();
+      if (data.success) {
+        setQuotaInfo(data.data);
+      } else {
+        setError(data.error || 'Không thể lấy thông tin quota');
+      }
+    } catch (err) {
+      console.error('Failed to fetch quota:', err);
+      setError('Lỗi khi lấy thông tin quota');
+    } finally {
+      setLoadingQuota(false);
+    }
+  };
+
+  // Load quota info on mount
+  useEffect(() => {
+    fetchQuotaInfo();
+  }, []);
+
   // Group voices by language
   const germanVoices = voices.filter(v => 
     v.language?.includes('Deutsch') || v.language?.includes('DE')
@@ -89,21 +133,40 @@ export default function LongTextSplitter() {
     v.language?.includes('Vietnamese')
   );
 
-  const splitText = (text: string): string[] => {
-    const minLength = 9800;
-    const maxLength = 9999;
-    const chunks: string[] = [];
+  const splitTextByApiQuotas = (text: string, apiKeys: QuotaInfo['keys']): { chunk: string; suggestedApiKey: string; maxTokens: number }[] => {
+    const chunks: { chunk: string; suggestedApiKey: string; maxTokens: number }[] = [];
     let startIndex = 0;
+    let apiKeyIndex = 0;
 
-    while (startIndex < text.length) {
-      const remainingLength = text.length - startIndex;
+    console.log(`📏 Splitting text by API quotas:`, apiKeys.map(k => `${k.name}: ${k.remainingTokens}`));
+
+    while (startIndex < text.length && apiKeyIndex < apiKeys.length) {
+      const currentApiKey = apiKeys[apiKeyIndex];
+      const remainingText = text.length - startIndex;
       
-      if (remainingLength <= maxLength) {
-        chunks.push(text.slice(startIndex));
+      // Safety buffer: use 200 chars less than quota, max 9999
+      const safeMaxLength = Math.min(currentApiKey.remainingTokens - 200, 9999);
+      const minLength = Math.min(Math.floor(safeMaxLength * 0.8), safeMaxLength - 100);
+
+      if (safeMaxLength < 100) {
+        // Skip this API key if quota too low
+        console.warn(`⚠️ Skipping ${currentApiKey.name}: quota too low (${currentApiKey.remainingTokens})`);
+        apiKeyIndex++;
+        continue;
+      }
+
+      // If remaining text fits in this API's quota
+      if (remainingText <= safeMaxLength) {
+        chunks.push({
+          chunk: text.slice(startIndex),
+          suggestedApiKey: currentApiKey.name,
+          maxTokens: currentApiKey.remainingTokens
+        });
         break;
       }
 
-      let endIndex = startIndex + maxLength;
+      // Find natural break point
+      let endIndex = startIndex + safeMaxLength;
       const segment = text.slice(startIndex, endIndex);
       
       const lastPeriod = segment.lastIndexOf('.');
@@ -113,29 +176,69 @@ export default function LongTextSplitter() {
       
       const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion, lastNewline);
       
-      if (lastSentenceEnd > minLength - startIndex) {
+      if (lastSentenceEnd > minLength) {
         endIndex = startIndex + lastSentenceEnd + 1;
       } else {
         const lastSpace = segment.lastIndexOf(' ');
-        if (lastSpace > minLength - startIndex) {
+        if (lastSpace > minLength) {
           endIndex = startIndex + lastSpace;
         }
       }
 
-      chunks.push(text.slice(startIndex, endIndex).trim());
+      const chunkText = text.slice(startIndex, endIndex).trim();
+      chunks.push({
+        chunk: chunkText,
+        suggestedApiKey: currentApiKey.name,
+        maxTokens: currentApiKey.remainingTokens
+      });
+
       startIndex = endIndex;
+      apiKeyIndex++; // Move to next API key
     }
+
+    // If text still remaining but no more API keys, warn user
+    if (startIndex < text.length) {
+      console.error(`❌ Ran out of API keys! Remaining text: ${text.length - startIndex} chars`);
+      setError(`Không đủ API keys để chia hết text. Còn thiếu ${text.length - startIndex} ký tự. Vui lòng thêm API keys hoặc chia text nhỏ hơn.`);
+    }
+
+    console.log(`✅ Split into ${chunks.length} chunks using ${apiKeyIndex} API keys`);
+    chunks.forEach((c, i) => console.log(`  ${i+1}. ${c.chunk.length} chars → ${c.suggestedApiKey}`));
 
     return chunks;
   };
 
-  const handleSplit = () => {
+  const handleSplit = async () => {
     setLoading(true);
     setError('');
+    
     try {
-      const chunks = splitText(inputText);
+      // Refresh quota info first
+      await fetchQuotaInfo();
+      
+      if (!quotaInfo || quotaInfo.keys.length === 0) {
+        setError('Không có API keys khả dụng. Vui lòng thêm API keys trong Admin Panel.');
+        return;
+      }
+      
+      // Split text using all available API keys
+      const chunks = splitTextByApiQuotas(inputText, quotaInfo.keys);
+      
+      if (chunks.length === 0) {
+        setError('Không thể chia text. Vui lòng kiểm tra quota API keys.');
+        return;
+      }
+      
       setSplitTexts(chunks);
       setAudioDataMap(new Map()); // Clear previous audio
+      
+      // Show summary
+      const totalChars = chunks.reduce((sum, c) => sum + c.chunk.length, 0);
+      console.log(`📊 Summary: ${chunks.length} chunks, ${totalChars} total chars (original: ${inputText.length})`);
+      
+      if (totalChars !== inputText.length) {
+        console.warn(`⚠️ Character count mismatch! Original: ${inputText.length}, Split: ${totalChars}`);
+      }
     } catch (error) {
       console.error('Error splitting text:', error);
       setError('Lỗi khi chia text');
@@ -144,7 +247,7 @@ export default function LongTextSplitter() {
     }
   };
 
-  const handleGenerateAudio = async (text: string, index: number) => {
+  const handleGenerateAudio = async (textChunk: TextChunk, index: number) => {
     if (!selectedVoiceId) {
       setError('Vui lòng chọn giọng đọc');
       return;
@@ -154,13 +257,15 @@ export default function LongTextSplitter() {
     setError('');
 
     try {
+      console.log(`🎵 Generating audio for chunk ${index + 1} using suggested API: ${textChunk.suggestedApiKey}`);
+      
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text,
+          text: textChunk.chunk,
           voiceId: selectedVoiceId,
           voiceSettings: {
             stability,
@@ -215,9 +320,9 @@ export default function LongTextSplitter() {
     setError('');
 
     // Generate all audios that don't exist yet
-    const promises = splitTexts.map(async (text, index) => {
+    const promises = splitTexts.map(async (textChunk, index) => {
       if (!audioDataMap.has(index)) {
-        await handleGenerateAudio(text, index);
+        await handleGenerateAudio(textChunk, index);
       }
     });
 
@@ -280,13 +385,13 @@ export default function LongTextSplitter() {
     });
   };
 
-  const handleCopy = (text: string, index: number) => {
-    navigator.clipboard.writeText(text);
+  const handleCopy = (textChunk: TextChunk, index: number) => {
+    navigator.clipboard.writeText(textChunk.chunk);
     alert(`Đã copy đoạn ${index + 1}!`);
   };
 
   const handleCopyAll = () => {
-    const allText = splitTexts.join('\n\n---\n\n');
+    const allText = splitTexts.map(tc => tc.chunk).join('\n\n---\n\n');
     navigator.clipboard.writeText(allText);
     alert('Đã copy tất cả các đoạn!');
   };
@@ -457,6 +562,114 @@ export default function LongTextSplitter() {
           </p>
 
           <div className="space-y-6">
+            {/* Quota Info Display */}
+            {loadingQuota && !quotaInfo ? (
+              <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-6 rounded-xl border-2 border-blue-300">
+                <div className="flex items-center justify-center gap-3">
+                  <svg className="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <div>
+                    <div className="font-semibold text-blue-800">Đang kiểm tra quota của TẤT CẢ API keys...</div>
+                    <div className="text-sm text-blue-600">Đang sync với ElevenLabs API</div>
+                  </div>
+                </div>
+              </div>
+            ) : quotaInfo ? (
+              <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-xl border-2 border-green-300">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
+                    </svg>
+                    Quota API (Đã kiểm tra TẤT CẢ keys)
+                  </h3>
+                  <button
+                    onClick={fetchQuotaInfo}
+                    disabled={loadingQuota}
+                    className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {loadingQuota ? (
+                      <>
+                        <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang sync...
+                      </>
+                    ) : (
+                      <>
+                        🔄 Sync lại tất cả
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="bg-white p-3 rounded-lg">
+                    <div className="text-xs text-gray-600 mb-1">Max tokens/lần</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {quotaInfo.maxTokensPerRequest.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <div className="text-xs text-gray-600 mb-1">Tổng còn lại</div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {quotaInfo.totalAvailableTokens.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <div className="text-xs text-gray-600 mb-1">API keys hoạt động</div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {quotaInfo.activeKeysCount}
+                    </div>
+                  </div>
+                </div>
+
+                {quotaInfo.maxTokensPerRequest < 5000 && (
+                  <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-3 text-sm text-yellow-800">
+                    ⚠️ <strong>Cảnh báo:</strong> Quota khả dụng thấp ({quotaInfo.maxTokensPerRequest.toLocaleString()} tokens). 
+                    Text sẽ được chia thành các đoạn nhỏ hơn để phù hợp.
+                  </div>
+                )}
+
+                {/* Show individual key quotas */}
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd"/>
+                    </svg>
+                    Chi tiết {quotaInfo.keys.length} API keys
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {quotaInfo.keys.map((key, index) => (
+                      <div key={index} className="bg-white p-3 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-medium text-gray-800">{key.name}</span>
+                          <span className="text-sm text-green-600 font-semibold">{key.percentageRemaining}%</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm text-gray-600">
+                          <span>{key.remainingTokens.toLocaleString()} / {key.totalTokens.toLocaleString()} tokens</span>
+                        </div>
+                        <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${
+                              parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' :
+                              parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            }`}
+                            style={{ width: `${key.percentageRemaining}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            ) : null}
+
             {/* Voice Selection */}
             <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-6 rounded-xl">
               <label className="block text-sm font-medium text-gray-800 mb-3">
@@ -926,7 +1139,7 @@ export default function LongTextSplitter() {
                   </div>
                 </div>
 
-                {splitTexts.map((chunk, index) => {
+                {splitTexts.map((textChunk, index) => {
                   const audioData = audioDataMap.get(index);
                   const isGenerating = generatingIndexes.has(index);
                   const isPlaying = playingIndex === index;
@@ -934,21 +1147,26 @@ export default function LongTextSplitter() {
                   return (
                     <div key={index} className="border-2 border-purple-200 rounded-xl p-6 space-y-4">
                       <div className="flex justify-between items-center flex-wrap gap-3">
-                        <h3 className="text-xl font-semibold text-purple-900">
-                          Đoạn {index + 1}
-                        </h3>
+                        <div>
+                          <h3 className="text-xl font-semibold text-purple-900">
+                            Đoạn {index + 1}
+                          </h3>
+                          <div className="text-xs text-gray-500 mt-1">
+                            API: {textChunk.suggestedApiKey} ({textChunk.maxTokens.toLocaleString()} tokens)
+                          </div>
+                        </div>
                         <div className="flex items-center gap-3">
                           <span className="text-sm font-medium text-gray-600">
-                            {chunk.length.toLocaleString()} ký tự
+                            {textChunk.chunk.length.toLocaleString()} ký tự
                           </span>
                           <button
-                            onClick={() => handleCopy(chunk, index)}
+                            onClick={() => handleCopy(textChunk, index)}
                             className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
                           >
                             Copy Text
                           </button>
                           <button
-                            onClick={() => handleGenerateAudio(chunk, index)}
+                            onClick={() => handleGenerateAudio(textChunk, index)}
                             disabled={isGenerating || audioData !== undefined}
                             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                           >
@@ -1012,7 +1230,7 @@ export default function LongTextSplitter() {
 
                       <div className="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
                         <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
-                          {chunk}
+                          {textChunk.chunk}
                         </pre>
                       </div>
                     </div>
