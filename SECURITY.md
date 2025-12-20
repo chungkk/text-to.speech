@@ -3,21 +3,11 @@
 ## Các Biện Pháp Bảo Mật Đã Triển Khai
 
 ### 1. ⏱️ Rate Limiting
-**Mục đích**: Chống abuse và DDoS attacks
+**Trạng thái**: ❌ ĐÃ TẮT (Disabled)
 
-**Cấu hình mặc định**:
-- `/api/tts`: 20 requests/hour per IP
-- `/api/preview`: Không giới hạn (text ngắn, ít tốn quota)
-- `/api/keys`: Chỉ local access (nên thêm authentication)
+**Lý do**: Rate limiting đã được gỡ bỏ để sử dụng nội bộ không giới hạn
 
-**Cách thay đổi**:
-```typescript
-// Trong route.ts
-const rateLimit = checkRateLimit(clientId, {
-  maxRequests: 30,        // Tăng lên 30 requests
-  windowMs: 60 * 60 * 1000 // 1 giờ
-});
-```
+**Lưu ý**: Nếu deploy công khai, nên bật lại rate limiting để chống abuse
 
 ### 2. 🔐 API Key Encryption (Optional)
 **Mục đích**: Bảo vệ API keys trong database
