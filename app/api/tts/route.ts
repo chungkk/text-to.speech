@@ -409,17 +409,26 @@ async function getAvailableApiKey(requiredTokens: number, excludeIds: string[] =
     }
   }
 
-  // If no key found, try syncing all active keys
-  if (!apiKey && excludeIds.length === 0) {
+  // If no key found, try syncing all active keys (excluding already tried ones)
+  if (!apiKey) {
     console.log('⚠ No key with sufficient quota in DB, trying to sync all active keys...');
     
-    const allActiveKeys = await ApiKey.find({ isActive: true }).sort({ remainingTokens: -1 });
+    const query: any = { isActive: true };
+    if (excludeIds.length > 0) {
+      query._id = { $nin: excludeIds };
+    }
     
-    for (const key of allActiveKeys) {
-      const syncedKey = await syncQuotaFromElevenLabs(key);
-      if (syncedKey && syncedKey.remainingTokens >= requiredTokens) {
-        console.log(`✓ Found available quota after sync: ${syncedKey.name}`);
-        return syncedKey;
+    const allActiveKeys = await ApiKey.find(query).sort({ remainingTokens: -1 });
+    
+    if (allActiveKeys.length === 0) {
+      console.log('✗ No more keys to try (all excluded or inactive)');
+    } else {
+      for (const key of allActiveKeys) {
+        const syncedKey = await syncQuotaFromElevenLabs(key);
+        if (syncedKey && syncedKey.remainingTokens >= requiredTokens) {
+          console.log(`✓ Found available quota after sync: ${syncedKey.name}`);
+          return syncedKey;
+        }
       }
     }
   }
@@ -562,16 +571,25 @@ export async function POST(request: NextRequest) {
               // If still not enough quota after sync, exclude this key
               if (syncedKey.remainingTokens < requiredTokens) {
                 console.log(`✗ ${syncedKey.name} confirmed out of quota (${syncedKey.remainingTokens} < ${requiredTokens})`);
-                excludedKeyIds.push(usedApiKey._id.toString());
+                if (!excludedKeyIds.includes(usedApiKey._id.toString())) {
+                  excludedKeyIds.push(usedApiKey._id.toString());
+                }
               } else {
-                // If actually has quota (DB was outdated), DON'T exclude and retry
+                // If actually has quota (DB was outdated), REMOVE from excluded list and retry
                 console.log(`✓ ${syncedKey.name} still has quota! Retrying with this key...`);
-                // Don't add to excludedKeyIds, next loop will select this key again
-                continue; // Skip increment retryCount
+                const keyIndex = excludedKeyIds.indexOf(usedApiKey._id.toString());
+                if (keyIndex > -1) {
+                  excludedKeyIds.splice(keyIndex, 1);
+                  console.log(`✓ Removed ${syncedKey.name} from excluded list`);
+                }
+                // Don't increment retryCount, next loop will select this key again
+                continue;
               }
             } else {
               // Failed to sync, treat as broken key
-              excludedKeyIds.push(usedApiKey._id.toString());
+              if (!excludedKeyIds.includes(usedApiKey._id.toString())) {
+                excludedKeyIds.push(usedApiKey._id.toString());
+              }
             }
           }
           
