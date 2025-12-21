@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import ApiKey from '@/models/ApiKey';
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
+import { createHash } from 'crypto';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 // Available voices - German voices (Most popular and high quality)
 export const AVAILABLE_VOICES = [
@@ -482,6 +485,39 @@ async function updateApiKeyUsage(keyId: string, tokensUsed: number) {
   });
 }
 
+// Generate cache filename based on text, voiceId, and voice settings
+function generateCacheKey(text: string, voiceId: string, voiceSettings: any): string {
+  const content = JSON.stringify({ text, voiceId, voiceSettings });
+  return createHash('md5').update(content).digest('hex');
+}
+
+// Check if cached audio exists
+async function getCachedAudio(cacheKey: string): Promise<Buffer | null> {
+  try {
+    const cacheDir = path.join(process.cwd(), 'public', 'audio-cache');
+    const filePath = path.join(cacheDir, `${cacheKey}.mp3`);
+    const buffer = await fs.readFile(filePath);
+    console.log(`✓ Cache HIT: ${cacheKey}`);
+    return buffer;
+  } catch (error) {
+    console.log(`✗ Cache MISS: ${cacheKey}`);
+    return null;
+  }
+}
+
+// Save audio to cache
+async function saveCachedAudio(cacheKey: string, audioBuffer: Buffer): Promise<void> {
+  try {
+    const cacheDir = path.join(process.cwd(), 'public', 'audio-cache');
+    await fs.mkdir(cacheDir, { recursive: true });
+    const filePath = path.join(cacheDir, `${cacheKey}.mp3`);
+    await fs.writeFile(filePath, audioBuffer);
+    console.log(`✓ Cached audio saved: ${cacheKey}`);
+  } catch (error) {
+    console.error(`✗ Failed to cache audio: ${error}`);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -517,6 +553,21 @@ export async function POST(request: NextRequest) {
       style: 0,
       use_speaker_boost: true,
     };
+
+    // Check cache first
+    const cacheKey = generateCacheKey(text, selectedVoiceId, finalVoiceSettings);
+    const cachedAudio = await getCachedAudio(cacheKey);
+    
+    if (cachedAudio) {
+      console.log(`🎵 Returning cached audio (${cachedAudio.length} bytes)`);
+      return new NextResponse(cachedAudio as any, {
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Content-Disposition': 'attachment; filename="speech.mp3"',
+          'X-Cache-Status': 'HIT',
+        },
+      });
+    }
 
     let retryCount = 0;
     const maxRetries = 3;
@@ -613,10 +664,14 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to generate speech after multiple attempts');
     }
 
+    // Save to cache for future use
+    await saveCachedAudio(cacheKey, audioBuffer);
+
     return new NextResponse(audioBuffer as any, {
       headers: {
         'Content-Type': 'audio/mpeg',
         'Content-Disposition': 'attachment; filename="speech.mp3"',
+        'X-Cache-Status': 'MISS',
       },
     });
   } catch (error: any) {
