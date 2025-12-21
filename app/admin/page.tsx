@@ -25,12 +25,16 @@ export default function AdminPage() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showBulkForm, setShowBulkForm] = useState(false);
   const [newKey, setNewKey] = useState({ key: '', totalTokens: 10000 });
+  const [bulkKeys, setBulkKeys] = useState('');
+  const [detectedKeys, setDetectedKeys] = useState<string[]>([]);
   const [nextKeyNumber, setNextKeyNumber] = useState(41);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [checkingQuota, setCheckingQuota] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
+  const [addingBulk, setAddingBulk] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 10,
@@ -95,6 +99,73 @@ export default function AdminPage() {
       }
     } catch (err) {
       setError('Failed to add API key');
+    }
+  };
+
+  // Function to extract API keys from text
+  const extractApiKeys = (text: string): string[] => {
+    // ElevenLabs API keys typically start with 'sk_' and are 32-48 characters long
+    const apiKeyRegex = /sk_[a-zA-Z0-9]{32,48}/g;
+    const matches = text.match(apiKeyRegex);
+    
+    if (!matches) return [];
+    
+    // Remove duplicates
+    return Array.from(new Set(matches));
+  };
+
+  // Handle textarea change and auto-detect keys
+  const handleBulkKeysChange = (text: string) => {
+    setBulkKeys(text);
+    const detected = extractApiKeys(text);
+    setDetectedKeys(detected);
+  };
+
+  const handleBulkAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setAddingBulk(true);
+
+    try {
+      if (detectedKeys.length === 0) {
+        setError('No valid API keys detected. Keys should start with "sk_"');
+        setAddingBulk(false);
+        return;
+      }
+
+      const response = await fetch('/api/keys/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keys: detectedKeys,
+          startNumber: nextKeyNumber,
+          totalTokens: 10000
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        const { successful, failed } = data.data;
+        setBulkKeys('');
+        setDetectedKeys([]);
+        setShowBulkForm(false);
+        fetchKeys(pagination.page);
+        
+        if (failed > 0) {
+          setSuccess(`✓ Added ${successful} keys successfully. ${failed} failed (duplicates or invalid).`);
+        } else {
+          setSuccess(`✓ Successfully added all ${successful} API keys!`);
+        }
+        setTimeout(() => setSuccess(''), 5000);
+      } else {
+        setError(data.error || 'Failed to add API keys');
+      }
+    } catch (err) {
+      setError('Failed to add API keys');
+    } finally {
+      setAddingBulk(false);
     }
   };
 
@@ -235,10 +306,22 @@ export default function AdminPage() {
 
           <div className="mb-4 flex gap-3">
             <button
-              onClick={() => setShowAddForm(!showAddForm)}
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                if (!showAddForm) setShowBulkForm(false);
+              }}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
             >
-              {showAddForm ? 'Cancel' : '+ Add API Key'}
+              {showAddForm ? 'Cancel' : '+ Add Single Key'}
+            </button>
+            <button
+              onClick={() => {
+                setShowBulkForm(!showBulkForm);
+                if (!showBulkForm) setShowAddForm(false);
+              }}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+            >
+              {showBulkForm ? 'Cancel' : '+ Add Bulk Keys'}
             </button>
             <button
               onClick={handleRefreshAll}
@@ -290,6 +373,86 @@ export default function AdminPage() {
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 Default quota: 10,000 characters/month (Free tier)
+              </p>
+            </form>
+          )}
+
+          {showBulkForm && (
+            <form onSubmit={handleBulkAdd} className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded">
+              <div className="mb-3">
+                <p className="text-sm text-purple-800">
+                  <strong>Bulk Add API Keys</strong> - Paste your data in any format
+                </p>
+                <p className="text-xs text-purple-600 mt-1">
+                  System will auto-detect API keys (starting with "sk_"). Keys will be numbered from {nextKeyNumber}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Paste your data here <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={bulkKeys}
+                    onChange={(e) => handleBulkKeysChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono bg-white text-gray-900 text-sm"
+                    placeholder="Example formats:&#10;sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx&#10;sk_yyy... | [APIKEY]&#10;Key: sk_zzz... (tab) Status: Active"
+                    rows={8}
+                    required
+                  />
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                      {detectedKeys.length > 0 ? (
+                        <span className="text-green-600 font-semibold">
+                          ✓ Detected {detectedKeys.length} valid API key{detectedKeys.length !== 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">
+                          No API keys detected yet...
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {detectedKeys.length > 0 && (
+                  <div className="bg-white border border-purple-200 rounded p-3">
+                    <p className="text-xs font-semibold text-purple-800 mb-2">
+                      Preview of detected keys:
+                    </p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {detectedKeys.slice(0, 10).map((key, index) => (
+                        <div key={index} className="text-xs font-mono text-gray-600 flex items-center gap-2">
+                          <span className="text-purple-600 font-semibold">{nextKeyNumber + index}.</span>
+                          <span>{key.substring(0, 15)}...{key.substring(key.length - 8)}</span>
+                        </div>
+                      ))}
+                      {detectedKeys.length > 10 && (
+                        <p className="text-xs text-gray-400 italic">
+                          ... and {detectedKeys.length - 10} more key(s)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={addingBulk || detectedKeys.length === 0}
+                  className="w-full px-6 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {addingBulk ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">⟳</span>
+                      Adding keys...
+                    </>
+                  ) : (
+                    `✓ Add ${detectedKeys.length} Key${detectedKeys.length !== 1 ? 's' : ''}`
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                💡 Tip: You can paste data with tabs, pipes (|), or any separators - we'll find the keys!
               </p>
             </form>
           )}

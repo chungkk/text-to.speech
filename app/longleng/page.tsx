@@ -37,6 +37,30 @@ interface QuotaInfo {
   }>;
 }
 
+interface Project {
+  _id: string;
+  name: string;
+  description?: string;
+  originalText: string;
+  chunks: Array<{
+    chunk: string;
+    suggestedApiKey: string;
+    maxTokens: number;
+    audioUrl?: string;
+    audioSize?: number;
+    audioDuration?: number;
+  }>;
+  voiceId?: string;
+  voiceSettings?: {
+    stability: number;
+    similarity_boost: number;
+    style: number;
+    use_speaker_boost: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function LongTextSplitter() {
   const [currentLang, setCurrentLang] = useState<Language>('de');
   const [inputText, setInputText] = useState('');
@@ -64,6 +88,20 @@ export default function LongTextSplitter() {
   // Merge audio states
   const [isMerging, setIsMerging] = useState(false);
   const [mergeProgress, setMergeProgress] = useState(0);
+
+  // Drag panel states
+  const [panelPosition, setPanelPosition] = useState({ x: 16, y: 96 }); // Default: left-4, top-24
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  // Project states
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [showProjectSidebar, setShowProjectSidebar] = useState(false);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectDescription, setNewProjectDescription] = useState('');
 
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
@@ -121,6 +159,182 @@ export default function LongTextSplitter() {
   useEffect(() => {
     fetchQuotaInfo();
   }, []);
+
+  // Load projects
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('/api/projects');
+      const data = await response.json();
+      if (data.success) {
+        setProjects(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch projects:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  // Save current state as project
+  const handleSaveProject = async () => {
+    if (!newProjectName.trim()) {
+      setError('Vui lòng nhập tên dự án');
+      return;
+    }
+
+    try {
+      const projectData = {
+        name: newProjectName,
+        description: newProjectDescription,
+        originalText: inputText,
+        chunks: splitTexts,
+        voiceId: selectedVoiceId,
+        voiceSettings: {
+          stability,
+          similarity_boost: similarityBoost,
+          style,
+          use_speaker_boost: useSpeakerBoost,
+        },
+      };
+
+      let response;
+      if (currentProject) {
+        // Update existing project
+        response = await fetch(`/api/projects/${currentProject._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(projectData),
+        });
+      } else {
+        // Create new project
+        response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(projectData),
+        });
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setCurrentProject(data.data);
+        setShowNewProjectModal(false);
+        setNewProjectName('');
+        setNewProjectDescription('');
+        fetchProjects();
+        alert(currentProject ? 'Đã cập nhật dự án!' : 'Đã tạo dự án mới!');
+      } else {
+        setError(data.error || 'Không thể lưu dự án');
+      }
+    } catch (err) {
+      console.error('Error saving project:', err);
+      setError('Lỗi khi lưu dự án');
+    }
+  };
+
+  // Load project
+  const handleLoadProject = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}`);
+      const data = await response.json();
+      if (data.success) {
+        const project = data.data;
+        setCurrentProject(project);
+        setInputText(project.originalText);
+        setSplitTexts(project.chunks);
+        if (project.voiceId) setSelectedVoiceId(project.voiceId);
+        if (project.voiceSettings) {
+          setStability(project.voiceSettings.stability);
+          setSimilarityBoost(project.voiceSettings.similarity_boost);
+          setStyle(project.voiceSettings.style);
+          setUseSpeakerBoost(project.voiceSettings.use_speaker_boost);
+        }
+        setShowProjectSidebar(false);
+        setAudioDataMap(new Map()); // Clear audio for now
+      }
+    } catch (err) {
+      console.error('Error loading project:', err);
+      setError('Không thể load dự án');
+    }
+  };
+
+  // Delete project
+  const handleDeleteProject = async (projectId: string) => {
+    if (!confirm('Bạn có chắc muốn xóa dự án này?')) return;
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (currentProject?._id === projectId) {
+          setCurrentProject(null);
+        }
+        fetchProjects();
+      }
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      setError('Không thể xóa dự án');
+    }
+  };
+
+  // Create new project (reset form)
+  const handleNewProject = () => {
+    setCurrentProject(null);
+    setInputText('');
+    setSplitTexts([]);
+    setAudioDataMap(new Map());
+    setNewProjectName('');
+    setNewProjectDescription('');
+    setShowNewProjectModal(true);
+  };
+
+  // Drag panel handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - panelPosition.x,
+      y: e.clientY - panelPosition.y,
+    });
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+
+    const newX = e.clientX - dragOffset.x;
+    const newY = e.clientY - dragOffset.y;
+
+    // Constrain to viewport
+    const maxX = window.innerWidth - 320; // 320px is panel width
+    const maxY = window.innerHeight - 200; // Minimum visible height
+
+    setPanelPosition({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY)),
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add/remove mouse event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset, panelPosition]);
 
   // Group voices by language
   const germanVoices = voices.filter(v => 
@@ -366,17 +580,67 @@ export default function LongTextSplitter() {
     setGeneratingAll(true);
     setError('');
 
-    // Generate all audios that don't exist yet
-    const promises = splitTexts.map(async (textChunk, index) => {
-      if (!audioDataMap.has(index)) {
-        await handleGenerateAudio(textChunk, index);
-      }
-    });
-
     try {
-      await Promise.all(promises);
+      // Get all chunks that need audio generation
+      const chunksToGenerate = splitTexts
+        .map((textChunk, index) => ({ textChunk, index }))
+        .filter(({ index }) => !audioDataMap.has(index));
+
+      console.log(`🎵 Starting generation: ${chunksToGenerate.length} chunks, max 3 concurrent`);
+
+      // Queue-based concurrency: maintain exactly 3 running requests
+      const MAX_CONCURRENT = 3;
+      let currentIndex = 0;
+      let runningCount = 0;
+      let completedCount = 0;
+
+      return new Promise<void>((resolve, reject) => {
+        const processNext = () => {
+          // Start new requests until we reach MAX_CONCURRENT or run out of chunks
+          while (runningCount < MAX_CONCURRENT && currentIndex < chunksToGenerate.length) {
+            const { textChunk, index } = chunksToGenerate[currentIndex];
+            currentIndex++;
+            runningCount++;
+
+            console.log(`🚀 Starting chunk ${index + 1} (${runningCount} running, ${completedCount} completed)`);
+
+            handleGenerateAudio(textChunk, index)
+              .then(() => {
+                completedCount++;
+                runningCount--;
+                console.log(`✅ Chunk ${index + 1} done (${runningCount} running, ${completedCount}/${chunksToGenerate.length} completed)`);
+
+                // Check if all done
+                if (completedCount === chunksToGenerate.length) {
+                  console.log('🎉 All audios generated successfully!');
+                  resolve();
+                } else {
+                  // Process next chunk
+                  processNext();
+                }
+              })
+              .catch((err) => {
+                runningCount--;
+                console.error(`❌ Chunk ${index + 1} failed:`, err);
+                // Continue with next chunk even if one fails
+                processNext();
+              });
+          }
+
+          // If no more chunks to start and nothing running, we're done
+          if (currentIndex >= chunksToGenerate.length && runningCount === 0) {
+            if (completedCount < chunksToGenerate.length) {
+              console.warn(`⚠️ Some chunks failed: ${completedCount}/${chunksToGenerate.length} completed`);
+            }
+            resolve();
+          }
+        };
+
+        processNext();
+      });
     } catch (err) {
       console.error('Error generating all audios:', err);
+      setError('Có lỗi khi tạo audio. Vui lòng thử lại.');
     } finally {
       setGeneratingAll(false);
     }
@@ -599,11 +863,328 @@ export default function LongTextSplitter() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50">
       <Header currentLang={currentLang} onLanguageChange={handleLanguageChange} />
       
+      {/* Floating Download Panel */}
+      {splitTexts.length > 0 && !isMinimized && (
+        <div 
+          className="fixed w-80 max-h-[calc(100vh-120px)] bg-white rounded-2xl shadow-2xl border-2 border-purple-200 overflow-hidden z-40 flex flex-col transition-all duration-300"
+          style={{
+            left: `${panelPosition.x}px`,
+            top: `${panelPosition.y}px`,
+            cursor: isDragging ? 'grabbing' : 'default',
+          }}
+        >
+          <div 
+            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 flex items-center justify-between cursor-grab active:cursor-grabbing"
+            onMouseDown={handleMouseDown}
+          >
+            <div className="flex-1">
+              <h3 className="font-bold text-lg">Download Manager</h3>
+              {!isMinimized && (
+                <p className="text-xs opacity-90">{audioDataMap.size}/{splitTexts.length} đã tạo</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="bg-white/20 backdrop-blur px-3 py-1 rounded-full text-sm font-semibold">
+                {splitTexts.length}
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMinimized(true);
+                }}
+                className="hover:bg-white/20 p-1 rounded transition-colors"
+                title="Thu nhỏ"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {splitTexts.map((textChunk, index) => {
+              const audioData = audioDataMap.get(index);
+              const isGenerating = generatingIndexes.has(index);
+              
+              return (
+                <div 
+                  key={index} 
+                  className={`border rounded-lg p-3 transition-all ${
+                    audioData 
+                      ? 'border-green-300 bg-green-50' 
+                      : isGenerating 
+                      ? 'border-blue-300 bg-blue-50 animate-pulse' 
+                      : 'border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-700">Đoạn {index + 1}</span>
+                      {audioData && (
+                        <span className="text-green-600 text-xs">✓</span>
+                      )}
+                      {isGenerating && (
+                        <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                    </div>
+                    {audioData && (
+                      <button
+                        onClick={() => handleDownloadAudio(index)}
+                        className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors flex items-center gap-1"
+                      >
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
+                        </svg>
+                        Tải
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {textChunk.chunk.length.toLocaleString()} ký tự
+                    {audioData && (
+                      <span className="ml-2">• {formatFileSize(audioData.size)}</span>
+                    )}
+                  </div>
+                  {isGenerating && (
+                    <div className="text-xs text-blue-600 mt-1">Đang tạo audio...</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          {audioDataMap.size > 0 && (
+            <div className="border-t p-3 bg-gray-50 space-y-2">
+              <button
+                onClick={handleDownloadAllAudios}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
+                </svg>
+                Tải Tất Cả ({audioDataMap.size})
+              </button>
+              {audioDataMap.size === splitTexts.length && (
+                <button
+                  onClick={handleMergeAllAudios}
+                  disabled={isMerging}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-2 rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isMerging ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang ghép {mergeProgress.toFixed(0)}%
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+                      </svg>
+                      Ghép Tất Cả
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Minimized Taskbar */}
+      {splitTexts.length > 0 && isMinimized && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-bounce-once">
+          <button
+            onClick={() => {
+              console.log('Opening panel from taskbar');
+              setIsMinimized(false);
+            }}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full shadow-2xl hover:from-purple-700 hover:to-pink-700 transition-all flex items-center gap-3 border-2 border-white/20 hover:scale-105"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
+            </svg>
+            <div className="flex flex-col items-start">
+              <span className="font-bold text-sm">Download Manager</span>
+              <span className="text-xs opacity-90">{audioDataMap.size}/{splitTexts.length} đã tạo</span>
+            </div>
+            <div className="bg-white/20 backdrop-blur px-2 py-1 rounded-full text-xs font-semibold">
+              {splitTexts.length}
+            </div>
+          </button>
+        </div>
+      )}
+      
+      
+      {/* Project Sidebar */}
+      {showProjectSidebar && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowProjectSidebar(false)}></div>
+          <div className="relative bg-white w-80 h-full shadow-2xl overflow-y-auto z-50">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-purple-900">Dự Án</h2>
+                <button
+                  onClick={() => setShowProjectSidebar(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <button
+                onClick={handleNewProject}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 mb-6 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+                </svg>
+                Tạo Dự Án Mới
+              </button>
+
+              <div className="space-y-3">
+                {projects.length === 0 ? (
+                  <p className="text-gray-500 text-sm text-center py-8">Chưa có dự án nào</p>
+                ) : (
+                  projects.map(project => (
+                    <div
+                      key={project._id}
+                      className={`border rounded-lg p-4 cursor-pointer hover:bg-purple-50 transition-colors ${
+                        currentProject?._id === project._id ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div onClick={() => handleLoadProject(project._id)}>
+                        <h3 className="font-semibold text-gray-800">{project.name}</h3>
+                        {project.description && (
+                          <p className="text-sm text-gray-600 mt-1">{project.description}</p>
+                        )}
+                        <div className="text-xs text-gray-500 mt-2">
+                          {project.chunks.length} đoạn • {new Date(project.updatedAt).toLocaleDateString('vi-VN')}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProject(project._id);
+                        }}
+                        className="mt-2 text-red-600 hover:text-red-700 text-sm"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New/Save Project Modal */}
+      {showNewProjectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowNewProjectModal(false)}></div>
+          <div className="relative bg-white rounded-2xl p-8 max-w-md w-full mx-4 z-50">
+            <h2 className="text-2xl font-bold text-purple-900 mb-6">
+              {currentProject ? 'Lưu Dự Án' : 'Tạo Dự Án Mới'}
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên dự án *
+                </label>
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  className="w-full p-3 border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                  placeholder="Nhập tên dự án..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mô tả (tùy chọn)
+                </label>
+                <textarea
+                  value={newProjectDescription}
+                  onChange={(e) => setNewProjectDescription(e.target.value)}
+                  className="w-full p-3 border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 resize-none"
+                  rows={3}
+                  placeholder="Mô tả dự án..."
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleSaveProject}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg hover:from-purple-700 hover:to-pink-700"
+                >
+                  {currentProject ? 'Cập Nhật' : 'Tạo Dự Án'}
+                </button>
+                <button
+                  onClick={() => setShowNewProjectModal(false)}
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h1 className="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Chia Text Dài
-          </h1>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Chia Text Dài
+              </h1>
+              {currentProject && (
+                <p className="text-sm text-purple-600 mt-1">
+                  Dự án: <span className="font-semibold">{currentProject.name}</span>
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowProjectSidebar(true)}
+                className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                </svg>
+                Dự Án
+              </button>
+              {(inputText || splitTexts.length > 0) && (
+                <button
+                  onClick={() => {
+                    if (currentProject) {
+                      setNewProjectName(currentProject.name);
+                      setNewProjectDescription(currentProject.description || '');
+                    }
+                    setShowNewProjectModal(true);
+                  }}
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z"/>
+                  </svg>
+                  {currentProject ? 'Cập Nhật' : 'Lưu'} Dự Án
+                </button>
+              )}
+            </div>
+          </div>
           <p className="text-center text-gray-600 mb-8">
             Chia text dài thành các đoạn 9800-9999 ký tự để tạo audio
           </p>
