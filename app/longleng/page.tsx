@@ -103,6 +103,9 @@ export default function LongTextSplitter() {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
 
+  // Downloaded audio tracking
+  const [downloadedIndexes, setDownloadedIndexes] = useState<Set<number>>(new Set());
+
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
     return stability === presetStability && 
@@ -251,7 +254,37 @@ export default function LongTextSplitter() {
           setUseSpeakerBoost(project.voiceSettings.use_speaker_boost);
         }
         setShowProjectSidebar(false);
-        setAudioDataMap(new Map()); // Clear audio for now
+        
+        // Load saved audio files
+        const loadedAudioMap = new Map<number, AudioData>();
+        for (let i = 0; i < project.chunks.length; i++) {
+          const chunk = project.chunks[i];
+          if (chunk.audioUrl) {
+            try {
+              // Fetch the audio file from the saved URL
+              const audioResponse = await fetch(chunk.audioUrl);
+              const blob = await audioResponse.blob();
+              const url = window.URL.createObjectURL(blob);
+              
+              loadedAudioMap.set(i, {
+                blob,
+                url,
+                duration: chunk.audioDuration || 0,
+                size: chunk.audioSize || blob.size,
+              });
+              
+              console.log(`✓ Loaded audio for chunk ${i + 1}: ${chunk.audioUrl}`);
+            } catch (audioErr) {
+              console.warn(`Failed to load audio for chunk ${i + 1}:`, audioErr);
+            }
+          }
+        }
+        setAudioDataMap(loadedAudioMap);
+        setDownloadedIndexes(new Set()); // Reset downloaded tracking for new project
+        
+        if (loadedAudioMap.size > 0) {
+          console.log(`✓ Loaded ${loadedAudioMap.size} audio files from project`);
+        }
       }
     } catch (err) {
       console.error('Error loading project:', err);
@@ -286,6 +319,7 @@ export default function LongTextSplitter() {
     setInputText('');
     setSplitTexts([]);
     setAudioDataMap(new Map());
+    setDownloadedIndexes(new Set());
     setNewProjectName('');
     setNewProjectDescription('');
     setShowNewProjectModal(true);
@@ -492,6 +526,7 @@ export default function LongTextSplitter() {
       
       setSplitTexts(chunks);
       setAudioDataMap(new Map()); // Clear previous audio
+      setDownloadedIndexes(new Set()); // Clear downloaded tracking
       
       // Show summary
       const totalChars = chunks.reduce((sum, c) => sum + c.chunk.length, 0);
@@ -558,6 +593,30 @@ export default function LongTextSplitter() {
       };
 
       setAudioDataMap(prev => new Map(prev).set(index, audioData));
+
+      // Save to project if exists
+      if (currentProject) {
+        try {
+          const formData = new FormData();
+          formData.append('chunkIndex', index.toString());
+          formData.append('audioFile', blob, 'audio.mp3');
+          formData.append('audioDuration', audio.duration.toString());
+
+          const saveResponse = await fetch(`/api/projects/${currentProject._id}/audio`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (saveResponse.ok) {
+            const saveData = await saveResponse.json();
+            console.log(`✓ Audio saved to project: ${saveData.data.audioUrl}`);
+          } else {
+            console.warn('Failed to save audio to project');
+          }
+        } catch (saveErr) {
+          console.error('Error saving audio to project:', saveErr);
+        }
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Lỗi khi tạo audio';
       setError(`Đoạn ${index + 1}: ${errorMessage}`);
@@ -681,6 +740,9 @@ export default function LongTextSplitter() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+
+    // Mark as downloaded
+    setDownloadedIndexes(prev => new Set(prev).add(index));
   };
 
   const handleDownloadAllAudios = () => {
@@ -693,6 +755,14 @@ export default function LongTextSplitter() {
         a.click();
         document.body.removeChild(a);
       }, index * 500); // Delay each download
+    });
+
+    // Mark all as downloaded
+    const allIndexes = Array.from(audioDataMap.keys());
+    setDownloadedIndexes(prev => {
+      const newSet = new Set(prev);
+      allIndexes.forEach(idx => newSet.add(idx));
+      return newSet;
     });
   };
 
@@ -906,6 +976,7 @@ export default function LongTextSplitter() {
             {splitTexts.map((textChunk, index) => {
               const audioData = audioDataMap.get(index);
               const isGenerating = generatingIndexes.has(index);
+              const isDownloaded = downloadedIndexes.has(index);
               
               return (
                 <div 
@@ -924,6 +995,9 @@ export default function LongTextSplitter() {
                       {audioData && (
                         <span className="text-green-600 text-xs">✓</span>
                       )}
+                      {isDownloaded && (
+                        <span className="text-blue-600 text-xs font-semibold bg-blue-100 px-2 py-0.5 rounded">Đã tải</span>
+                      )}
                       {isGenerating && (
                         <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -934,12 +1008,17 @@ export default function LongTextSplitter() {
                     {audioData && (
                       <button
                         onClick={() => handleDownloadAudio(index)}
-                        className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors flex items-center gap-1"
+                        className={`px-3 py-1 rounded text-xs transition-colors flex items-center gap-1 ${
+                          isDownloaded 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                            : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
+                        title={isDownloaded ? 'Tải lại' : 'Tải xuống'}
                       >
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
                         </svg>
-                        Tải
+                        {isDownloaded ? 'Tải lại' : 'Tải'}
                       </button>
                     )}
                   </div>
@@ -957,43 +1036,72 @@ export default function LongTextSplitter() {
             })}
           </div>
           
-          {audioDataMap.size > 0 && (
-            <div className="border-t p-3 bg-gray-50 space-y-2">
+          <div className="border-t p-3 bg-gray-50 space-y-2">
+            {/* Nút Tạo Tất Cả Audio */}
+            {audioDataMap.size < splitTexts.length && (
               <button
-                onClick={handleDownloadAllAudios}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                onClick={handleGenerateAllAudios}
+                disabled={generatingAll || generatingIndexes.size > 0}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
-                </svg>
-                Tải Tất Cả ({audioDataMap.size})
+                {generatingAll || generatingIndexes.size > 0 ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang tạo {generatingIndexes.size} audio...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+                    </svg>
+                    🎵 Tạo Tất Cả Audio ({splitTexts.length - audioDataMap.size})
+                  </>
+                )}
               </button>
-              {audioDataMap.size === splitTexts.length && (
+            )}
+            
+            {/* Nút Tải Tất Cả và Ghép */}
+            {audioDataMap.size > 0 && (
+              <>
                 <button
-                  onClick={handleMergeAllAudios}
-                  disabled={isMerging}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-2 rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                  onClick={handleDownloadAllAudios}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2 shadow-md"
                 >
-                  {isMerging ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Đang ghép {mergeProgress.toFixed(0)}%
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
-                      </svg>
-                      Ghép Tất Cả
-                    </>
-                  )}
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
+                  </svg>
+                  Tải Tất Cả ({audioDataMap.size})
                 </button>
-              )}
-            </div>
-          )}
+                {audioDataMap.size === splitTexts.length && (
+                  <button
+                    onClick={handleMergeAllAudios}
+                    disabled={isMerging}
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-2 rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
+                  >
+                    {isMerging ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang ghép {mergeProgress.toFixed(0)}%
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+                        </svg>
+                        Ghép Tất Cả
+                      </>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -1771,13 +1879,17 @@ export default function LongTextSplitter() {
                   const audioData = audioDataMap.get(index);
                   const isGenerating = generatingIndexes.has(index);
                   const isPlaying = playingIndex === index;
+                  const isDownloaded = downloadedIndexes.has(index);
 
                   return (
                     <div key={index} className="border-2 border-purple-200 rounded-xl p-6 space-y-4">
                       <div className="flex justify-between items-center flex-wrap gap-3">
                         <div>
-                          <h3 className="text-xl font-semibold text-purple-900">
+                          <h3 className="text-xl font-semibold text-purple-900 flex items-center gap-2">
                             Đoạn {index + 1}
+                            {isDownloaded && (
+                              <span className="text-blue-600 text-xs font-semibold bg-blue-100 px-2 py-1 rounded">Đã tải</span>
+                            )}
                           </h3>
                           <div className="text-xs text-gray-500 mt-1">
                             API: {textChunk.suggestedApiKey} ({textChunk.maxTokens.toLocaleString()} tokens)
@@ -1845,12 +1957,17 @@ export default function LongTextSplitter() {
                             </div>
                             <button
                               onClick={() => handleDownloadAudio(index)}
-                              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2"
+                              className={`px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 ${
+                                isDownloaded 
+                                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                  : 'bg-green-600 text-white hover:bg-green-700'
+                              }`}
+                              title={isDownloaded ? 'Tải lại' : 'Tải xuống'}
                             >
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
                               </svg>
-                              Download
+                              {isDownloaded ? 'Tải lại' : 'Download'}
                             </button>
                           </div>
                         </div>

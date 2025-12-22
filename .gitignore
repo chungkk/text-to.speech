@@ -42,3 +42,6 @@ next-env.d.ts
 
 # audio cache
 /public/audio-cache
+
+# project audio files
+/public/project-audio
