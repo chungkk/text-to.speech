@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 
-const ADMIN_PASSWORD_HASH = '$2b$10$WorwMdcg.9lY69rW/8qu6uXgLh40fX/mHHRB/yCjrjL/P9lEymhuC'; // Abc123456@@
+const ADMIN_PASSWORD_HASH = '$2b$10$m0q8G4lHDEtlwwGOMPZRVuiAzuSWlNI3fRJ8WnuTv7oKp7EXOlSvq'; // Chungkk123456@@
 
 export async function POST(request: NextRequest) {
   try {
