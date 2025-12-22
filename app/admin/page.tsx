@@ -22,6 +22,10 @@ interface Pagination {
 }
 
 export default function AdminPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -41,6 +45,51 @@ export default function AdminPage() {
     total: 0,
     totalPages: 0
   });
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/admin-auth');
+      const data = await response.json();
+      setIsAuthenticated(data.authenticated);
+    } catch (err) {
+      setIsAuthenticated(false);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+
+    try {
+      const response = await fetch('/api/admin-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsAuthenticated(true);
+        setPassword('');
+      } else {
+        setAuthError(data.error || 'Invalid password');
+      }
+    } catch (err) {
+      setAuthError('Authentication failed');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin-auth', { method: 'DELETE' });
+      setIsAuthenticated(false);
+    } catch (err) {
+      console.error('Logout failed');
+    }
+  };
 
   const fetchKeys = async (page = 1) => {
     try {
@@ -70,8 +119,14 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    fetchKeys();
+    checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchKeys();
+    }
+  }, [isAuthenticated]);
 
   const handleAddKey = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,15 +320,86 @@ export default function AdminPage() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Access</h1>
+              <p className="text-gray-600">Enter password to continue</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  placeholder="Enter admin password"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              {authError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm text-center">{authError}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+              >
+                Login
+              </button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <Link href="/" className="text-sm text-blue-600 hover:text-blue-700">
+                ← Back to TTS
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900">API Keys Management</h1>
-            <Link href="/" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-              Back to TTS
-            </Link>
+            <div className="flex gap-2">
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Logout
+              </button>
+              <Link href="/" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Back to TTS
+              </Link>
+            </div>
           </div>
 
           {/* ElevenLabs Free Tier Info */}
