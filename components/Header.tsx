@@ -40,6 +40,13 @@ export default function Header({ currentLang, onLanguageChange }: HeaderProps) {
             {/* Navigation Links */}
             <nav className="flex items-center gap-2">
               <Link
+                href="/sound-effects"
+                className="flex items-center gap-2 px-3 py-2 sm:px-4 text-white hover:bg-white/20 rounded-lg transition-all font-semibold bg-white/10 border border-white/30 hover:border-white/50 shadow-sm"
+              >
+                <span className="text-lg sm:text-xl">🎵</span>
+                <span className="hidden sm:inline">Sound FX</span>
+              </Link>
+              <Link
                 href="/longleng"
                 className="flex items-center gap-2 px-3 py-2 sm:px-4 text-white hover:bg-white/20 rounded-lg transition-all font-semibold bg-white/10 border border-white/30 hover:border-white/50 shadow-sm"
               >
