@@ -106,7 +106,7 @@ export const translations: Record<Language, Translations> = {
     textInputLabel: 'Ihr deutscher Text eingeben',
     textInputPlaceholder: 'Geben Sie Ihren deutschen Text hier ein...',
     charactersCount: 'Zeichen',
-    minCharacters: 'Min: 100 Zeichen',
+    minCharacters: 'Min: 10 Zeichen',
     charactersRemaining: 'Noch {count} Zeichen',
     ready: 'Bereit',
     tooManyCharacters: '{count} Zeichen zu viel',
@@ -185,7 +185,7 @@ export const translations: Record<Language, Translations> = {
     
     // Errors
     errorTextRequired: 'Text ist erforderlich',
-    errorTextTooShort: 'Text muss mindestens 100 Zeichen haben',
+    errorTextTooShort: 'Text muss mindestens 10 Zeichen haben',
     errorTextTooLong: 'Text darf maximal 10.000 Zeichen haben',
     errorRateLimit: 'Rate-Limit überschritten. Versuchen Sie es später erneut.',
     errorGeneral: 'Ein Fehler ist aufgetreten',
@@ -201,7 +201,7 @@ export const translations: Record<Language, Translations> = {
     textInputLabel: 'Enter Your German Text',
     textInputPlaceholder: 'Enter your German text here...',
     charactersCount: 'characters',
-    minCharacters: 'Min: 100 characters',
+    minCharacters: 'Min: 10 characters',
     charactersRemaining: '{count} characters needed',
     ready: 'Ready',
     tooManyCharacters: '{count} characters too many',
@@ -280,7 +280,7 @@ export const translations: Record<Language, Translations> = {
     
     // Errors
     errorTextRequired: 'Text is required',
-    errorTextTooShort: 'Text must be at least 100 characters',
+    errorTextTooShort: 'Text must be at least 10 characters',
     errorTextTooLong: 'Text must be less than 10,000 characters',
     errorRateLimit: 'Rate limit exceeded. Please try again later.',
     errorGeneral: 'An error occurred',
@@ -296,7 +296,7 @@ export const translations: Record<Language, Translations> = {
     textInputLabel: 'Nhập Văn Bản Tiếng Đức',
     textInputPlaceholder: 'Nhập văn bản tiếng Đức của bạn tại đây...',
     charactersCount: 'ký tự',
-    minCharacters: 'Tối thiểu: 100 ký tự',
+    minCharacters: 'Tối thiểu: 10 ký tự',
     charactersRemaining: 'Còn thiếu {count} ký tự',
     ready: 'Sẵn sàng',
     tooManyCharacters: 'Thừa {count} ký tự',
@@ -375,7 +375,7 @@ export const translations: Record<Language, Translations> = {
     
     // Errors
     errorTextRequired: 'Vui lòng nhập văn bản',
-    errorTextTooShort: 'Văn bản phải có ít nhất 100 ký tự',
+    errorTextTooShort: 'Văn bản phải có ít nhất 10 ký tự',
     errorTextTooLong: 'Văn bản không được quá 10.000 ký tự',
     errorRateLimit: 'Vượt quá giới hạn. Vui lòng thử lại sau.',
     errorGeneral: 'Đã xảy ra lỗi',

@@ -532,9 +532,9 @@ export async function POST(request: NextRequest) {
 
     const selectedVoiceId = voiceId || AVAILABLE_VOICES[0].id;
 
-    if (text.length < 100 || text.length > 10000) {
+    if (text.length < 10 || text.length > 10000) {
       return NextResponse.json(
-        { success: false, error: 'Text must be between 100 and 10000 characters' },
+        { success: false, error: 'Text must be between 10 and 10000 characters' },
         { status: 400 }
       );
     }

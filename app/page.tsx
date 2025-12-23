@@ -154,8 +154,8 @@ export default function Home() {
     e.preventDefault();
     setError('');
 
-    if (text.length < 100) {
-      setError('Text must be at least 100 characters');
+    if (text.length < 10) {
+      setError('Text must be at least 10 characters');
       return;
     }
 
@@ -332,7 +332,7 @@ export default function Home() {
               <div className="flex justify-between items-center mt-3">
                 <div className="flex items-center gap-2">
                   <p className={`text-sm font-semibold ${
-                    text.length < 100 
+                    text.length < 10 
                       ? 'text-orange-600' 
                       : text.length > 10000 
                       ? 'text-red-600' 
@@ -343,9 +343,9 @@ export default function Home() {
                   <span className="text-sm text-gray-400">/</span>
                   <p className="text-sm text-gray-500">10,000</p>
                 </div>
-                {text.length < 100 && text.length > 0 && (
+                {text.length < 10 && text.length > 0 && (
                   <p className="text-xs text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded">
-                    {t.charactersRemaining.replace('{count}', (100 - text.length).toString())}
+                    {t.charactersRemaining.replace('{count}', (10 - text.length).toString())}
                   </p>
                 )}
                 {text.length === 0 && (
@@ -353,7 +353,7 @@ export default function Home() {
                     {t.minCharacters}
                   </p>
                 )}
-                {text.length >= 100 && text.length <= 10000 && (
+                {text.length >= 10 && text.length <= 10000 && (
                   <p className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded flex items-center gap-1">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -816,7 +816,7 @@ export default function Home() {
                 <>
                   <button
                     type="submit"
-                    disabled={loading || text.length < 100 || text.length > 10000}
+                    disabled={loading || text.length < 10 || text.length > 10000}
                     className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
                   >
                     {loading ? (
@@ -848,9 +848,9 @@ export default function Home() {
                       </span>
                     )}
                   </button>
-                  {text.length < 100 && text.length > 0 && (
+                  {text.length < 10 && text.length > 0 && (
                     <p className="text-center text-xs text-red-600 mt-2">
-                      {t.charactersRemaining.replace('{count}', (100 - text.length).toString())}
+                      {t.charactersRemaining.replace('{count}', (10 - text.length).toString())}
                     </p>
                   )}
                 </>
