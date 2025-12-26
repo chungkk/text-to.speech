@@ -288,19 +288,179 @@ export const AVAILABLE_VOICES = [
   },
 
   // === VIETNAMESE VOICES (Tiếng Việt) - Native Vietnamese Voices ===
+  
+  // --- MIỀN TRUNG (Central Vietnam) ---
   { 
     id: 'NSzi72jFi7P1JqCwPRuM', 
     name: '🇻🇳 MC Nổi Tiếng - Nam Trầm Ấm', 
     language: 'Vietnamese',
-    description: '⭐⭐⭐ Miền Trung - Giọng nam trầm ấm, voice-over',
+    description: '⭐⭐⭐ Miền Trung - Giọng nam trầm ấm, voice-over & quảng cáo',
     previewText: 'Xin chào các bạn, tôi là MC với giọng nói trầm ấm, phù hợp cho voice-over và quảng cáo.'
   },
+  { 
+    id: '1l0C0QA9c9jN22EmWiB0', 
+    name: '🇻🇳 Jade - Nữ Đà Nẵng Chuyên Nghiệp', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Trung - Giọng nữ Đà Nẵng, kể chuyện & thuyết minh',
+    previewText: 'Xin chào, tôi là Jade. Giọng Đà Nẵng chuyên nghiệp của tôi phù hợp cho voice-over và kể chuyện.'
+  },
+  { 
+    id: 'foH7s9fX31wFFH2yqrFa', 
+    name: '🇻🇳 Huyền - Nữ Đà Nẵng Thân Thiện', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Miền Trung - Giọng nữ bình tĩnh, thân thiện từ Đà Nẵng',
+    previewText: 'Xin chào, tôi là Huyền. Giọng nói bình tĩnh và thân thiện của tôi dễ nghe cho mọi nội dung.'
+  },
+
+  // --- MIỀN BẮC (Northern Vietnam) ---
   { 
     id: '1d5Bb0SMBPB10Gx6iQeu', 
     name: '🇻🇳 Việt - Nam 30 tuổi', 
     language: 'Vietnamese',
-    description: '⭐⭐ Miền Bắc - Giọng nam chuẩn, giải trí & TV',
+    description: '⭐⭐⭐ Miền Bắc - Giọng nam chuẩn, giải trí & TV',
     previewText: 'Xin chào, tôi là Việt. Giọng Bắc chuẩn của tôi phù hợp cho giải trí và truyền hình.'
+  },
+  { 
+    id: '3VnrjnYrskPMDsapTr8X', 
+    name: '🇻🇳 Đặng Tùng Duy - Nam Trầm Ấm', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Bắc - Giọng nam sâu lắng, giáo dục & kể chuyện',
+    previewText: 'Xin chào, tôi là Tùng Duy. Giọng nam trầm ấm của tôi phù hợp cho giáo dục và kể chuyện.'
+  },
+  { 
+    id: 'BlZK9tHPU6XXjwOSIiYA', 
+    name: '🇻🇳 Huyền Trang - Nữ TikTok', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Miền Bắc - Giọng nữ trẻ, video TikTok & mạng xã hội',
+    previewText: 'Xin chào, tôi là Huyền Trang. Giọng nói trẻ trung của tôi phù hợp cho TikTok và mạng xã hội.'
+  },
+  { 
+    id: 'sbaSITtJLv4yb3vIi67Z', 
+    name: '🇻🇳 TVC Nhật Nam - Nam Quảng Cáo', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Bắc Hà Nội - Giọng nam quảng cáo chuyên nghiệp',
+    previewText: 'Xin chào, tôi là Nhật Nam. Giọng quảng cáo chuyên nghiệp từ Hà Nội cho TVC và thương mại.'
+  },
+  { 
+    id: 'pGapy9MNHCukzJtjavF0', 
+    name: '🇻🇳 TVC Ái Hạnh - Nữ Quảng Cáo', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Bắc Hà Nội - Giọng nữ trẻ cho quảng cáo & giải trí',
+    previewText: 'Xin chào, tôi là Ái Hạnh. Giọng nữ trẻ từ Hà Nội phù hợp cho quảng cáo và giải trí.'
+  },
+  { 
+    id: 'XBDAUT8ybuJTTCoOLSUj', 
+    name: '🇻🇳 MC Anh Đức - Nam Podcast', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Bắc Hà Nội - MC cho podcast, thuyết minh & TV',
+    previewText: 'Xin chào, tôi là Anh Đức. Giọng MC từ Hà Nội phù hợp cho podcast và truyền hình.'
+  },
+  { 
+    id: 'WVkYyTxxVgMOsw1IIVL0', 
+    name: '🇻🇳 Trần Hiếu - Nam Kể Chuyện', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Miền Bắc - Giọng nam trung niên, nhân vật trong truyện',
+    previewText: 'Xin chào, tôi là Trần Hiếu. Giọng nam của tôi phù hợp cho nhân vật trong các câu chuyện.'
+  },
+  { 
+    id: 'jpmnSYDOADVEpZksbLmc', 
+    name: '🇻🇳 Nhung - Nữ Trang Trọng', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Bắc Hà Nội - Giọng nữ trang trọng, thuyết minh & phát thanh',
+    previewText: 'Xin chào, tôi là Nhung. Giọng trang trọng từ Hà Nội phù hợp cho thuyết minh và phát thanh.'
+  },
+  { 
+    id: 'ueSxRO0nLF1bj93J2hVt', 
+    name: '🇻🇳 Trung Caha - Nam Hội Thoại', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Miền Bắc - Giọng nam trung niên cho hội thoại',
+    previewText: 'Xin chào, tôi là Trung. Giọng Bắc của tôi phù hợp cho các cuộc hội thoại tự nhiên.'
+  },
+
+  // --- MIỀN NAM (Southern Vietnam) ---
+  { 
+    id: 'M0rVwr32hdQ5UXpkI3ni', 
+    name: '🇻🇳 MC Thế Hào - Nam Miền Nam', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Nam - Giọng nam trẻ, rõ ràng và ấm áp',
+    previewText: 'Xin chào, tôi là Thế Hào. Giọng miền Nam trẻ trung và ấm áp của tôi phù hợp cho nhiều nội dung.'
+  },
+  { 
+    id: 'KkZEqzG4FfkIHMbzFAnu', 
+    name: '🇻🇳 DS Nam - Nam Đọc Truyện', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Miền Nam - Giọng nam chuẩn, đọc truyện & mạng xã hội',
+    previewText: 'Xin chào, tôi là DS Nam. Giọng nam chuẩn của tôi phù hợp cho đọc truyện và nội dung mạng xã hội.'
+  },
+  { 
+    id: 'DXiwi9uoxet6zAiZXynP', 
+    name: '🇻🇳 Trần Kim Hùng - Nam Bí Ẩn', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Nam - Giọng nam trầm, truyện bí ẩn & kinh dị',
+    previewText: 'Xin chào, tôi là Kim Hùng. Giọng trầm của tôi phù hợp cho truyện bí ẩn và kinh dị.'
+  },
+  { 
+    id: 'FTYCiQT21H9XQvhRu0ch', 
+    name: '🇻🇳 Minh Trung - Nam Trầm', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Miền Nam - Giọng nam trung niên trầm lắng',
+    previewText: 'Xin chào, tôi là Minh Trung. Giọng nam trầm của tôi mang lại sự uy tín cho nội dung.'
+  },
+  { 
+    id: '5GqeT84PUduicivx0y5x', 
+    name: '🇻🇳 Thắng - Nam Audiobook', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Nam - Giọng nam chuẩn, audiobook & tin tức',
+    previewText: 'Xin chào, tôi là Thắng. Giọng miền Nam chuẩn của tôi phù hợp cho audiobook và tin tức.'
+  },
+  { 
+    id: 'i5pAdlAfmoAYKmD5vJu5', 
+    name: '🇻🇳 Thanh Phong - Nam Sài Gòn', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Miền Nam Sài Gòn - Giọng nam cho thuyết minh',
+    previewText: 'Xin chào, tôi là Thanh Phong. Giọng Sài Gòn của tôi phù hợp cho thuyết minh và voice-over.'
+  },
+  { 
+    id: 'xPEfmymXC4WdBxGMznS7', 
+    name: '🇻🇳 Diễm Tuyết - Nữ Sài Gòn', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Nam Sài Gòn - Giọng nữ trẻ, quảng cáo & giải trí',
+    previewText: 'Xin chào, tôi là Diễm Tuyết. Giọng nữ Sài Gòn của tôi phù hợp cho quảng cáo và giải trí.'
+  },
+  { 
+    id: 'SV45Oxy7wx09dotPbEsL', 
+    name: '🇻🇳 Kim - Nữ Năng Động', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Nam - Giọng nữ trẻ, năng động và rõ ràng',
+    previewText: 'Xin chào, tôi là Kim. Giọng nữ năng động của tôi phù hợp cho video và hội thoại.'
+  },
+  { 
+    id: 'Na53UVgcmbKZaZMsp5JE', 
+    name: '🇻🇳 Linh - Nữ Trung Tính', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Nam - Giọng nữ trung tính, phù hợp mọi dịp',
+    previewText: 'Xin chào, tôi là Linh. Giọng nữ miền Nam trung tính của tôi phù hợp cho mọi loại nội dung.'
+  },
+  { 
+    id: '7hsfEc7irDn6E8br0qfw', 
+    name: '🇻🇳 Lý Hải - Nam Trầm Ấm', 
+    language: 'Vietnamese',
+    description: '⭐⭐ Miền Nam - Giọng nam trung niên, trầm và ấm',
+    previewText: 'Xin chào, tôi là Lý Hải. Giọng nam trầm ấm miền Nam của tôi phù hợp cho giải trí và TV.'
+  },
+  { 
+    id: 'HAAKLJlaJeGl18MKHYeg', 
+    name: '🇻🇳 Trang - Nữ Nhẹ Nhàng', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Nam Sài Gòn - Giọng nữ nhẹ nhàng, thuyết minh & ASMR',
+    previewText: 'Xin chào, tôi là Trang. Giọng nữ nhẹ nhàng từ Sài Gòn phù hợp cho thuyết minh và ASMR.'
+  },
+  { 
+    id: '2vT8WlUXV1qBtgiLZdSb', 
+    name: '🇻🇳 Mai - Nữ Chuyên Nghiệp', 
+    language: 'Vietnamese',
+    description: '⭐⭐⭐ Miền Nam Biên Hòa - Giọng nữ trung niên chuyên nghiệp',
+    previewText: 'Xin chào, tôi là Mai. Giọng nữ chuyên nghiệp từ Biên Hòa phù hợp cho thuyết minh trang trọng.'
   },
 ];
 
@@ -308,8 +468,33 @@ const CHARACTERS_PER_TOKEN = 1;
 
 // Vietnamese voice IDs - need to use turbo v2.5 model for proper Vietnamese diacritics
 const VIETNAMESE_VOICE_IDS = [
+  // Miền Trung
   'NSzi72jFi7P1JqCwPRuM', // MC Nổi Tiếng
+  '1l0C0QA9c9jN22EmWiB0', // Jade
+  'foH7s9fX31wFFH2yqrFa', // Huyền
+  // Miền Bắc
   '1d5Bb0SMBPB10Gx6iQeu', // Việt
+  '3VnrjnYrskPMDsapTr8X', // Đặng Tùng Duy
+  'BlZK9tHPU6XXjwOSIiYA', // Huyền Trang
+  'sbaSITtJLv4yb3vIi67Z', // TVC Nhật Nam
+  'pGapy9MNHCukzJtjavF0', // TVC Ái Hạnh
+  'XBDAUT8ybuJTTCoOLSUj', // MC Anh Đức
+  'WVkYyTxxVgMOsw1IIVL0', // Trần Hiếu
+  'jpmnSYDOADVEpZksbLmc', // Nhung
+  'ueSxRO0nLF1bj93J2hVt', // Trung Caha
+  // Miền Nam
+  'M0rVwr32hdQ5UXpkI3ni', // MC Thế Hào
+  'KkZEqzG4FfkIHMbzFAnu', // DS Nam
+  'DXiwi9uoxet6zAiZXynP', // Trần Kim Hùng
+  'FTYCiQT21H9XQvhRu0ch', // Minh Trung
+  '5GqeT84PUduicivx0y5x', // Thắng
+  'i5pAdlAfmoAYKmD5vJu5', // Thanh Phong
+  'xPEfmymXC4WdBxGMznS7', // Diễm Tuyết
+  'SV45Oxy7wx09dotPbEsL', // Kim
+  'Na53UVgcmbKZaZMsp5JE', // Linh
+  '7hsfEc7irDn6E8br0qfw', // Lý Hải
+  'HAAKLJlaJeGl18MKHYeg', // Trang
+  '2vT8WlUXV1qBtgiLZdSb', // Mai
 ];
 
 async function syncQuotaFromElevenLabs(apiKey: any) {
