@@ -57,6 +57,9 @@ export default function Home() {
   // Gender filter state
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   
+  // Language filter state
+  const [languageFilter, setLanguageFilter] = useState<'all' | 'de' | 'en' | 'vi'>('all');
+  
   // Audio player states
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
@@ -124,22 +127,25 @@ export default function Home() {
     return femaleName.some(fn => name.includes(fn)) ? 'female' : 'male';
   };
 
-  // Group voices by language with gender filter
+  // Group voices by language with gender and language filter
   const germanVoices = voices.filter(v => {
     const isGerman = v.language?.includes('Deutsch') || v.language?.includes('DE');
     if (!isGerman) return false;
+    if (languageFilter !== 'all' && languageFilter !== 'de') return false;
     if (genderFilter === 'all') return true;
     return getVoiceGender(v.name) === genderFilter;
   });
   const englishVoices = voices.filter(v => {
     const isEnglish = v.language?.includes('English') || v.language?.includes('British');
     if (!isEnglish) return false;
+    if (languageFilter !== 'all' && languageFilter !== 'en') return false;
     if (genderFilter === 'all') return true;
     return getVoiceGender(v.name) === genderFilter;
   });
   const vietnameseVoices = voices.filter(v => {
     const isVietnamese = v.language?.includes('Vietnamese');
     if (!isVietnamese) return false;
+    if (languageFilter !== 'all' && languageFilter !== 'vi') return false;
     if (genderFilter === 'all') return true;
     return getVoiceGender(v.name) === genderFilter;
   });
@@ -347,119 +353,66 @@ export default function Home() {
           <form onSubmit={handleSubmit}>
             {/* Quota Info Display */}
             {loadingQuota && !quotaInfo ? (
-              <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-6 rounded-xl border-2 border-blue-300 mb-6">
-                <div className="flex items-center justify-center gap-3">
-                  <svg className="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
+              <div className="bg-green-50 p-3 rounded-lg border border-green-200 mb-4">
+                <div className="flex items-center gap-2 text-sm text-green-700">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <div>
-                    <div className="font-semibold text-blue-800">Đang kiểm tra quota API...</div>
-                    <div className="text-sm text-blue-600">Đang sync với ElevenLabs API</div>
-                  </div>
+                  Đang kiểm tra quota API...
                 </div>
               </div>
             ) : quotaInfo ? (
-              <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-xl border-2 border-green-300 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
-                    </svg>
-                    Quota API
-                  </h3>
+              <div className="bg-green-50 p-3 rounded-lg border border-green-200 mb-4">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Max/lần:</span>
+                    <span className="font-bold text-green-600">{quotaInfo.maxTokensPerRequest.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Tổng còn:</span>
+                    <span className="font-bold text-blue-600">{quotaInfo.totalAvailableTokens.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Keys:</span>
+                    <span className="font-bold text-purple-600">{quotaInfo.activeKeysCount}</span>
+                  </div>
+                  <select
+                    value={selectedApiKey}
+                    onChange={(e) => setSelectedApiKey(e.target.value)}
+                    className="flex-1 min-w-[200px] text-xs p-1.5 border border-green-300 rounded focus:border-green-500 bg-white"
+                  >
+                    {quotaInfo.keys.map((key) => (
+                      <option key={key.name} value={key.name}>
+                        {key.name} - {key.remainingTokens.toLocaleString()} ({key.percentageRemaining}%)
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="button"
                     onClick={fetchQuotaInfo}
                     disabled={loadingQuota}
-                    className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-1"
+                    className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 disabled:opacity-50"
                   >
-                    {loadingQuota ? (
-                      <>
-                        <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Đang sync...
-                      </>
-                    ) : (
-                      <>🔄 Sync lại</>
-                    )}
+                    {loadingQuota ? '...' : '🔄'}
                   </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="bg-white p-3 rounded-lg">
-                    <div className="text-xs text-gray-600 mb-1">Max tokens/lần</div>
-                    <div className="text-2xl font-bold text-green-600">
-                      {quotaInfo.maxTokensPerRequest.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg">
-                    <div className="text-xs text-gray-600 mb-1">Tổng còn lại</div>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {quotaInfo.totalAvailableTokens.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg">
-                    <div className="text-xs text-gray-600 mb-1">API keys hoạt động</div>
-                    <div className="text-2xl font-bold text-purple-600">
-                      {quotaInfo.activeKeysCount}
-                    </div>
-                  </div>
-                </div>
-
-                {/* API Key Selection */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Chọn API Key:
-                  </label>
-                  <select
-                    value={selectedApiKey}
-                    onChange={(e) => setSelectedApiKey(e.target.value)}
-                    className="w-full p-2 border-2 border-green-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all bg-white"
-                  >
-                    {quotaInfo.keys.map((key) => (
-                      <option key={key.name} value={key.name}>
-                        {key.name} - {key.remainingTokens.toLocaleString()} tokens ({key.percentageRemaining}%)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Show individual key quotas */}
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd"/>
-                    </svg>
-                    Chi tiết {quotaInfo.keys.length} API keys
-                  </summary>
-                  <div className="mt-3 space-y-2">
-                    {quotaInfo.keys.map((key, index) => (
-                      <div key={index} className="bg-white p-3 rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-medium text-gray-800">{key.name}</span>
-                          <span className="text-sm text-green-600 font-semibold">{key.percentageRemaining}%</span>
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-gray-600 hover:text-gray-800">Chi tiết {quotaInfo.keys.length} keys</summary>
+                    <div className="absolute mt-1 bg-white border rounded-lg shadow-lg p-2 z-20 max-w-sm">
+                      {quotaInfo.keys.map((key, index) => (
+                        <div key={index} className="py-1 border-b last:border-0">
+                          <div className="flex justify-between text-xs">
+                            <span className="font-medium">{key.name}</span>
+                            <span className="text-green-600">{key.percentageRemaining}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                            <div className={`h-1 rounded-full ${parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' : parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${key.percentageRemaining}%` }}></div>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center text-sm text-gray-600">
-                          <span>{key.remainingTokens.toLocaleString()} / {key.totalTokens.toLocaleString()} tokens</span>
-                        </div>
-                        <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${
-                              parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' :
-                              parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' :
-                              'bg-red-500'
-                            }`}
-                            style={{ width: `${key.percentageRemaining}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </details>
+                      ))}
+                    </div>
+                  </details>
+                </div>
               </div>
             ) : null}
 
@@ -540,6 +493,54 @@ export default function Home() {
                 <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                   {voices.length}
                 </span>
+              </div>
+              
+              {/* Language Filter Buttons */}
+              <div className="flex gap-1 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setLanguageFilter('all')}
+                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
+                    languageFilter === 'all'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  🌍 Tất cả
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguageFilter('de')}
+                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
+                    languageFilter === 'de'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  🇩🇪 Đức
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguageFilter('en')}
+                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
+                    languageFilter === 'en'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  🇬🇧 Anh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguageFilter('vi')}
+                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
+                    languageFilter === 'vi'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  🇻🇳 Việt
+                </button>
               </div>
               
               {/* Gender Filter Buttons */}
@@ -643,6 +644,131 @@ export default function Home() {
                     </div>
                   )}
 
+                  {/* English Voices */}
+                  {englishVoices.length > 0 && (
+                    <div>
+                      <h4 className="text-[10px] font-bold text-gray-700 mb-1 px-0.5 flex items-center gap-1">
+                        🇬🇧 English
+                        <span className="text-gray-500 font-normal">({englishVoices.length})</span>
+                      </h4>
+                      <div className="grid gap-1">
+                        {englishVoices.map((voice) => (
+                          <div
+                            key={voice.id}
+                            className={`border rounded p-1.5 cursor-pointer transition-all bg-white ${
+                              selectedVoiceId === voice.id
+                                ? 'border-blue-500 ring-1 ring-blue-200'
+                                : 'border-gray-200 hover:border-blue-300'
+                            }`}
+                            onClick={() => setSelectedVoiceId(voice.id)}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="radio"
+                                name="voice"
+                                value={voice.id}
+                                checked={selectedVoiceId === voice.id}
+                                onChange={() => setSelectedVoiceId(voice.id)}
+                                className="w-3 h-3 text-blue-600 flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-900 text-[10px] truncate">{voice.name}</h3>
+                                <p className="text-[9px] text-gray-500 truncate leading-tight">{voice.description}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePreviewVoice(voice.id);
+                                }}
+                                disabled={loading}
+                                className="px-1.5 py-0.5 bg-green-600 text-white text-[9px] rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center gap-0.5 flex-shrink-0"
+                              >
+                                {previewingVoiceId === voice.id ? (
+                                  <>
+                                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    {t.stopButton}
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                    </svg>
+                                    {t.previewButton}
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Vietnamese Voices */}
+                  {vietnameseVoices.length > 0 && (
+                    <div>
+                      <h4 className="text-[10px] font-bold text-gray-700 mb-1 px-0.5 flex items-center gap-1">
+                        🇻🇳 Tiếng Việt
+                        <span className="text-gray-500 font-normal">({vietnameseVoices.length})</span>
+                      </h4>
+                      <div className="grid gap-1">
+                        {vietnameseVoices.map((voice) => (
+                          <div
+                            key={voice.id}
+                            className={`border rounded p-1.5 cursor-pointer transition-all bg-white ${
+                              selectedVoiceId === voice.id
+                                ? 'border-blue-500 ring-1 ring-blue-200'
+                                : 'border-gray-200 hover:border-blue-300'
+                            }`}
+                            onClick={() => setSelectedVoiceId(voice.id)}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="radio"
+                                name="voice"
+                                value={voice.id}
+                                checked={selectedVoiceId === voice.id}
+                                onChange={() => setSelectedVoiceId(voice.id)}
+                                className="w-3 h-3 text-blue-600 flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-900 text-[10px] truncate">{voice.name}</h3>
+                                <p className="text-[9px] text-gray-500 truncate leading-tight">{voice.description}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePreviewVoice(voice.id);
+                                }}
+                                disabled={loading}
+                                className="px-1.5 py-0.5 bg-green-600 text-white text-[9px] rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center gap-0.5 flex-shrink-0"
+                              >
+                                {previewingVoiceId === voice.id ? (
+                                  <>
+                                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    {t.stopButton}
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                    </svg>
+                                    {t.previewButton}
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                 </div>
               </div>

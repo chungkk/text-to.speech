@@ -287,59 +287,54 @@ export const AVAILABLE_VOICES = [
     previewText: 'Good day, I am Daniel. My authoritative British voice is perfect for news broadcasts and official announcements.'
   },
 
-  // === VIETNAMESE VOICES (Tiếng Việt) ===
+  // === VIETNAMESE VOICES (Tiếng Việt) - Native Vietnamese Voices ===
   { 
-    id: 'bIHbv24MWmeRgasZH58o', 
-    name: '🇻🇳 Linh - Nữ Miền Bắc', 
+    id: '1l0C0QA9c9jN22EmWiB0', 
+    name: '🇻🇳 Jade - Nữ Đà Nẵng', 
     language: 'Vietnamese',
-    description: '⭐⭐⭐ Giọng nữ Hà Nội chuẩn, rõ ràng',
-    previewText: 'Xin chào, tôi là Linh. Giọng nói của tôi mang âm hưởng miền Bắc thuần túy, phù hợp cho tin tức và giáo dục.'
+    description: '⭐⭐⭐ NATIVE - Giọng nữ chuyên nghiệp, phát âm chuẩn',
+    previewText: 'Xin chào, tôi là Jade. Giọng nói của tôi mang âm hưởng miền Trung, phù hợp cho kể chuyện và thuyết minh.'
   },
   { 
-    id: 'ThT5KcBeYPX3keUQqHPh', 
-    name: '🇻🇳 Mai - Nữ Duyên Dáng', 
+    id: 'NSzi72jFi7P1JqCwPRuM', 
+    name: '🇻🇳 MC Nổi Tiếng - Nam Trầm Ấm', 
     language: 'Vietnamese',
-    description: '⭐⭐⭐ Giọng nữ nhẹ nhàng, ấm áp',
-    previewText: 'Xin chào, tôi là Mai. Giọng nói nhẹ nhàng của tôi tạo cảm giác thân thiện, phù hợp cho sách nói và podcast.'
+    description: '⭐⭐⭐ NATIVE - Giọng nam trầm ấm, chuyên nghiệp',
+    previewText: 'Xin chào các bạn, tôi là MC với giọng nói trầm ấm, phù hợp cho voice-over và quảng cáo.'
   },
   { 
-    id: 'pNInz6obpgDQGcFmaJgB', 
-    name: '🇻🇳 Minh - Nam Trầm Ấm', 
+    id: 'JxmKvRaNYFidf0N27Vng', 
+    name: '🇻🇳 Sơn Trần - Nam Trẻ', 
     language: 'Vietnamese',
-    description: '⭐⭐⭐ Giọng nam trầm, chuyên nghiệp',
-    previewText: 'Xin chào, tôi là Minh. Giọng trầm ấm của tôi phù hợp cho thuyết trình, quảng cáo và kể chuyện.'
+    description: '⭐⭐⭐ NATIVE - Giọng nam trẻ trung, năng động',
+    previewText: 'Chào mọi người, mình là Sơn. Giọng nói trẻ trung của mình phù hợp cho video và voice-over.'
   },
   { 
-    id: 'EXAVITQu4vr4xnSDxMaL', 
-    name: '🇻🇳 Hương - Nữ Miền Nam', 
+    id: 'foH7s9fX31wFFH2yqrFa', 
+    name: '🇻🇳 Huyền - Nữ Nhẹ Nhàng', 
     language: 'Vietnamese',
-    description: '⭐⭐ Giọng nữ Sài Gòn vui tươi',
-    previewText: 'Chào bạn, mình là Hương. Giọng nói của mình mang âm hưởng miền Nam, vui tươi và gần gũi.'
+    description: '⭐⭐⭐ NATIVE - Giọng nữ bình tĩnh, thân thiện',
+    previewText: 'Xin chào, tôi là Huyền. Giọng nói nhẹ nhàng của tôi tạo cảm giác gần gũi và thân thiện.'
   },
   { 
-    id: 'ErXwobaYiN019PkySvjV', 
-    name: '🇻🇳 Tuấn - Nam Miền Trung', 
+    id: '3VnrjnYrskPMDsapTr8X', 
+    name: '🇻🇳 Đặng Tùng Duy - Nam Giáo Dục', 
     language: 'Vietnamese',
-    description: '⭐⭐ Giọng nam miền Trung đặc trưng',
-    previewText: 'Xin chào, tôi là Tuấn. Giọng nói của tôi mang âm hưởng miền Trung, phù hợp cho nội dung văn hóa.'
-  },
-  { 
-    id: 'MF3mGyEYCl7XYWbV9V6O', 
-    name: '🇻🇳 Lan - Nữ Trẻ Trung', 
-    language: 'Vietnamese',
-    description: '⭐⭐ Giọng nữ trẻ, năng động',
-    previewText: 'Chào mọi người, mình là Lan. Giọng nói trẻ trung của mình phù hợp cho video social media và vlog.'
-  },
-  { 
-    id: 'TxGEqnHWrfWFTfGW9XjX', 
-    name: '🇻🇳 Khang - Nam Trẻ', 
-    language: 'Vietnamese',
-    description: '⭐ Giọng nam trẻ, hiện đại',
-    previewText: 'Chào bạn, mình là Khang. Giọng nói của mình phù hợp với giới trẻ, lý tưởng cho content online.'
+    description: '⭐⭐⭐ NATIVE - Giọng nam trầm, phù hợp nội dung giáo dục',
+    previewText: 'Xin chào, tôi là Tùng Duy. Giọng nói của tôi phù hợp cho nội dung giáo dục và thuyết trình.'
   },
 ];
 
 const CHARACTERS_PER_TOKEN = 1;
+
+// Vietnamese voice IDs - need to use turbo v2.5 model for proper Vietnamese diacritics
+const VIETNAMESE_VOICE_IDS = [
+  '1l0C0QA9c9jN22EmWiB0', // Jade
+  'NSzi72jFi7P1JqCwPRuM', // MC Nổi Tiếng
+  'JxmKvRaNYFidf0N27Vng', // Sơn Trần
+  'foH7s9fX31wFFH2yqrFa', // Huyền
+  '3VnrjnYrskPMDsapTr8X', // Đặng Tùng Duy
+];
 
 async function syncQuotaFromElevenLabs(apiKey: any) {
   try {
@@ -485,9 +480,11 @@ async function updateApiKeyUsage(keyId: string, tokensUsed: number) {
   });
 }
 
-// Generate cache filename based on text, voiceId, and voice settings
+// Generate cache filename based on text, voiceId, model, and voice settings
 function generateCacheKey(text: string, voiceId: string, voiceSettings: any): string {
-  const content = JSON.stringify({ text, voiceId, voiceSettings });
+  // Include model in cache key since Vietnamese voices use different model
+  const modelId = VIETNAMESE_VOICE_IDS.includes(voiceId) ? 'eleven_turbo_v2_5' : 'eleven_multilingual_v2';
+  const content = JSON.stringify({ text, voiceId, modelId, voiceSettings });
   return createHash('md5').update(content).digest('hex');
 }
 
@@ -584,9 +581,16 @@ export async function POST(request: NextRequest) {
           apiKey: apiKey.key,
         });
 
+        // Use turbo v2.5 for Vietnamese voices (proper diacritics), multilingual v2 for others
+        const modelId = VIETNAMESE_VOICE_IDS.includes(selectedVoiceId) 
+          ? 'eleven_turbo_v2_5' 
+          : 'eleven_multilingual_v2';
+        
+        console.log(`🎤 Using model: ${modelId} for voice: ${selectedVoiceId}`);
+        
         const audioStream = await client.textToSpeech.convert(selectedVoiceId, {
           text,
-          modelId: 'eleven_multilingual_v2',
+          modelId,
           voiceSettings: finalVoiceSettings,
         });
 
