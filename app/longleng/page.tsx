@@ -106,6 +106,9 @@ export default function LongTextSplitter() {
   // Downloaded audio tracking
   const [downloadedIndexes, setDownloadedIndexes] = useState<Set<number>>(new Set());
 
+  // Voice language filter
+  const [voiceLanguageFilter, setVoiceLanguageFilter] = useState<'all' | 'de' | 'en' | 'vi'>('all');
+
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
     return stability === presetStability && 
@@ -1411,12 +1414,57 @@ export default function LongTextSplitter() {
               <label className="block text-sm font-medium text-gray-800 mb-3">
                 Chọn giọng đọc:
               </label>
+              
+              {/* Language Filter */}
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => setVoiceLanguageFilter('all')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    voiceLanguageFilter === 'all'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-purple-100'
+                  }`}
+                >
+                  Tất cả
+                </button>
+                <button
+                  onClick={() => setVoiceLanguageFilter('vi')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    voiceLanguageFilter === 'vi'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-purple-100'
+                  }`}
+                >
+                  🇻🇳 Tiếng Việt
+                </button>
+                <button
+                  onClick={() => setVoiceLanguageFilter('de')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    voiceLanguageFilter === 'de'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-purple-100'
+                  }`}
+                >
+                  🇩🇪 Deutsch
+                </button>
+                <button
+                  onClick={() => setVoiceLanguageFilter('en')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    voiceLanguageFilter === 'en'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-purple-100'
+                  }`}
+                >
+                  🇬🇧 English
+                </button>
+              </div>
+
               <select
                 value={selectedVoiceId}
                 onChange={(e) => setSelectedVoiceId(e.target.value)}
                 className="w-full p-3 border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all bg-white"
               >
-                {germanVoices.length > 0 && (
+                {(voiceLanguageFilter === 'all' || voiceLanguageFilter === 'de') && germanVoices.length > 0 && (
                   <optgroup label="🇩🇪 Deutsch">
                     {germanVoices.map(voice => (
                       <option key={voice.id} value={voice.id}>
@@ -1425,7 +1473,7 @@ export default function LongTextSplitter() {
                     ))}
                   </optgroup>
                 )}
-                {englishVoices.length > 0 && (
+                {(voiceLanguageFilter === 'all' || voiceLanguageFilter === 'en') && englishVoices.length > 0 && (
                   <optgroup label="🇬🇧 English">
                     {englishVoices.map(voice => (
                       <option key={voice.id} value={voice.id}>
@@ -1434,7 +1482,7 @@ export default function LongTextSplitter() {
                     ))}
                   </optgroup>
                 )}
-                {vietnameseVoices.length > 0 && (
+                {(voiceLanguageFilter === 'all' || voiceLanguageFilter === 'vi') && vietnameseVoices.length > 0 && (
                   <optgroup label="🇻🇳 Tiếng Việt">
                     {vietnameseVoices.map(voice => (
                       <option key={voice.id} value={voice.id}>

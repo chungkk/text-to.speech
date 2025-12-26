@@ -289,39 +289,18 @@ export const AVAILABLE_VOICES = [
 
   // === VIETNAMESE VOICES (Tiếng Việt) - Native Vietnamese Voices ===
   { 
-    id: '1l0C0QA9c9jN22EmWiB0', 
-    name: '🇻🇳 Jade - Nữ Đà Nẵng', 
-    language: 'Vietnamese',
-    description: '⭐⭐⭐ NATIVE - Giọng nữ chuyên nghiệp, phát âm chuẩn',
-    previewText: 'Xin chào, tôi là Jade. Giọng nói của tôi mang âm hưởng miền Trung, phù hợp cho kể chuyện và thuyết minh.'
-  },
-  { 
     id: 'NSzi72jFi7P1JqCwPRuM', 
     name: '🇻🇳 MC Nổi Tiếng - Nam Trầm Ấm', 
     language: 'Vietnamese',
-    description: '⭐⭐⭐ NATIVE - Giọng nam trầm ấm, chuyên nghiệp',
+    description: '⭐⭐⭐ Miền Trung - Giọng nam trầm ấm, voice-over',
     previewText: 'Xin chào các bạn, tôi là MC với giọng nói trầm ấm, phù hợp cho voice-over và quảng cáo.'
   },
   { 
-    id: 'JxmKvRaNYFidf0N27Vng', 
-    name: '🇻🇳 Sơn Trần - Nam Trẻ', 
+    id: '1d5Bb0SMBPB10Gx6iQeu', 
+    name: '🇻🇳 Việt - Nam 30 tuổi', 
     language: 'Vietnamese',
-    description: '⭐⭐⭐ NATIVE - Giọng nam trẻ trung, năng động',
-    previewText: 'Chào mọi người, mình là Sơn. Giọng nói trẻ trung của mình phù hợp cho video và voice-over.'
-  },
-  { 
-    id: 'foH7s9fX31wFFH2yqrFa', 
-    name: '🇻🇳 Huyền - Nữ Nhẹ Nhàng', 
-    language: 'Vietnamese',
-    description: '⭐⭐⭐ NATIVE - Giọng nữ bình tĩnh, thân thiện',
-    previewText: 'Xin chào, tôi là Huyền. Giọng nói nhẹ nhàng của tôi tạo cảm giác gần gũi và thân thiện.'
-  },
-  { 
-    id: '3VnrjnYrskPMDsapTr8X', 
-    name: '🇻🇳 Đặng Tùng Duy - Nam Giáo Dục', 
-    language: 'Vietnamese',
-    description: '⭐⭐⭐ NATIVE - Giọng nam trầm, phù hợp nội dung giáo dục',
-    previewText: 'Xin chào, tôi là Tùng Duy. Giọng nói của tôi phù hợp cho nội dung giáo dục và thuyết trình.'
+    description: '⭐⭐ Miền Bắc - Giọng nam chuẩn, giải trí & TV',
+    previewText: 'Xin chào, tôi là Việt. Giọng Bắc chuẩn của tôi phù hợp cho giải trí và truyền hình.'
   },
 ];
 
@@ -329,11 +308,8 @@ const CHARACTERS_PER_TOKEN = 1;
 
 // Vietnamese voice IDs - need to use turbo v2.5 model for proper Vietnamese diacritics
 const VIETNAMESE_VOICE_IDS = [
-  '1l0C0QA9c9jN22EmWiB0', // Jade
   'NSzi72jFi7P1JqCwPRuM', // MC Nổi Tiếng
-  'JxmKvRaNYFidf0N27Vng', // Sơn Trần
-  'foH7s9fX31wFFH2yqrFa', // Huyền
-  '3VnrjnYrskPMDsapTr8X', // Đặng Tùng Duy
+  '1d5Bb0SMBPB10Gx6iQeu', // Việt
 ];
 
 async function syncQuotaFromElevenLabs(apiKey: any) {
