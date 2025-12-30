@@ -324,8 +324,14 @@ export default function LongTextSplitter() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Lỗi khi tạo audio');
+        let errorMessage = `Lỗi HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // Server trả về HTML error page thay vì JSON
+        }
+        throw new Error(errorMessage);
       }
 
       const blob = await response.blob();
