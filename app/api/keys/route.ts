@@ -5,7 +5,7 @@ import ApiKey from '@/models/ApiKey';
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
-    
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
       ApiKey.countDocuments()
     ]);
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       data: keys,
       pagination: {
         page,
@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: apiKey }, { status: 201 });
-  } catch (error: any) {
-    if (error.code === 11000) {
+  } catch (error) {
+    if ((error as { code?: number }).code === 11000) {
       return NextResponse.json(
         { success: false, error: 'API key already exists' },
         { status: 400 }

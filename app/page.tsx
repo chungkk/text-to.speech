@@ -53,15 +53,15 @@ export default function Home() {
   const [generatedAudio, setGeneratedAudio] = useState<{ blob: Blob; url: string } | null>(null);
   const [isPlayingGenerated, setIsPlayingGenerated] = useState(false);
   const [selectedVoiceName, setSelectedVoiceName] = useState('');
-  
+
   // Gender filter state
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
-  
+
   // Audio player states
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioSize, setAudioSize] = useState(0);
-  
+
   // Voice Settings for expressive speech
   const [stability, setStability] = useState(0.3);
   const [similarityBoost, setSimilarityBoost] = useState(0.85);
@@ -74,10 +74,10 @@ export default function Home() {
 
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
-    return stability === presetStability && 
-           similarityBoost === presetSimilarity && 
-           style === presetStyle && 
-           useSpeakerBoost === presetBoost;
+    return stability === presetStability &&
+      similarityBoost === presetSimilarity &&
+      style === presetStyle &&
+      useSpeakerBoost === presetBoost;
   };
 
   useEffect(() => {
@@ -173,7 +173,7 @@ export default function Home() {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const audio = new Audio(url);
-      
+
       audio.onended = () => {
         setPreviewingVoiceId(null);
         setCurrentAudio(null);
@@ -182,7 +182,7 @@ export default function Home() {
 
       setCurrentAudio(audio);
       await audio.play();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Preview error:', err);
       setPreviewingVoiceId(null);
       setError('Failed to play preview');
@@ -212,8 +212,8 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          text, 
+        body: JSON.stringify({
+          text,
           voiceId: selectedVoiceId,
           voiceSettings: {
             stability,
@@ -231,24 +231,24 @@ export default function Home() {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      
+
       // Get audio metadata
       const audio = new Audio(url);
       audio.onloadedmetadata = () => {
         setAudioDuration(audio.duration);
       };
       setAudioSize(blob.size);
-      
+
       // Save selected voice name
       const selectedVoice = voices.find(v => v.id === selectedVoiceId);
       if (selectedVoice) {
         setSelectedVoiceName(selectedVoice.name);
       }
-      
+
       setGeneratedAudio({ blob, url });
-      
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -272,21 +272,21 @@ export default function Home() {
     }
 
     const audio = new Audio(generatedAudio.url);
-    
+
     audio.onloadedmetadata = () => {
       setAudioDuration(audio.duration);
     };
-    
+
     audio.ontimeupdate = () => {
       setAudioCurrentTime(audio.currentTime);
     };
-    
+
     audio.onended = () => {
       setIsPlayingGenerated(false);
       setCurrentAudio(null);
       setAudioCurrentTime(0);
     };
-    
+
     setCurrentAudio(audio);
     setIsPlayingGenerated(true);
     audio.play();
@@ -339,7 +339,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header currentLang={currentLang} onLanguageChange={handleLanguageChange} />
-      
+
       <div className="max-w-[95%] mx-auto py-8 px-4">
         <div className="bg-white rounded-lg shadow-xl p-8">
 
@@ -363,8 +363,8 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
+                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
                     </svg>
                     {t.quotaApiTitle || 'Quota API (Đã kiểm tra TẤT CẢ keys)'}
                   </h3>
@@ -389,7 +389,7 @@ export default function Home() {
                     )}
                   </button>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="bg-white p-3 rounded-lg">
                     <div className="text-xs text-gray-600 mb-1">{t.maxTokensPerRequest || 'Max tokens/lần'}</div>
@@ -421,7 +421,7 @@ export default function Home() {
                 <details className="mt-4">
                   <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd"/>
+                      <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" />
                     </svg>
                     {t.detailApiKeys || `Chi tiết ${quotaInfo.keys.length} API keys`}
                   </summary>
@@ -436,12 +436,11 @@ export default function Home() {
                           <span>{key.remainingTokens.toLocaleString()} / {key.totalTokens.toLocaleString()} tokens</span>
                         </div>
                         <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${
-                              parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' :
-                              parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' :
-                              'bg-red-500'
-                            }`}
+                          <div
+                            className={`h-2 rounded-full ${parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' :
+                                parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' :
+                                  'bg-red-500'
+                              }`}
                             style={{ width: `${key.percentageRemaining}%` }}
                           ></div>
                         </div>
@@ -456,499 +455,485 @@ export default function Home() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* Column 1: Text Input */}
               <div className="lg:col-span-1">
-              <label htmlFor="text" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-                {t.textInputLabel}
-              </label>
-              <textarea
-                id="text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={10}
-                className="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-base font-normal bg-white shadow-sm"
-                placeholder={t.textInputPlaceholder}
-                disabled={loading}
-                style={{ 
-                  lineHeight: '1.9',
-                  letterSpacing: '0.01em',
-                  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                  color: '#1f2937'
-                }}
-              />
-              <div className="flex justify-between items-center mt-3">
-                <div className="flex items-center gap-2">
-                  <p className={`text-sm font-semibold ${
-                    text.length < 100 
-                      ? 'text-orange-600' 
-                      : text.length > 10000 
-                      ? 'text-red-600' 
-                      : 'text-green-600'
-                  }`}>
-                    {text.length.toLocaleString()}
-                  </p>
-                  <span className="text-sm text-gray-400">/</span>
-                  <p className="text-sm text-gray-500">10,000</p>
+                <label htmlFor="text" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                  {t.textInputLabel}
+                </label>
+                <textarea
+                  id="text"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={10}
+                  className="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-base font-normal bg-white shadow-sm"
+                  placeholder={t.textInputPlaceholder}
+                  disabled={loading}
+                  style={{
+                    lineHeight: '1.9',
+                    letterSpacing: '0.01em',
+                    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                    color: '#1f2937'
+                  }}
+                />
+                <div className="flex justify-between items-center mt-3">
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-semibold ${text.length < 100
+                        ? 'text-orange-600'
+                        : text.length > 10000
+                          ? 'text-red-600'
+                          : 'text-green-600'
+                      }`}>
+                      {text.length.toLocaleString()}
+                    </p>
+                    <span className="text-sm text-gray-400">/</span>
+                    <p className="text-sm text-gray-500">10,000</p>
+                  </div>
+                  {text.length < 100 && text.length > 0 && (
+                    <p className="text-xs text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded">
+                      {t.charactersRemaining.replace('{count}', (100 - text.length).toString())}
+                    </p>
+                  )}
+                  {text.length === 0 && (
+                    <p className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">
+                      {t.minCharacters}
+                    </p>
+                  )}
+                  {text.length >= 100 && text.length <= 10000 && (
+                    <p className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      {t.ready}
+                    </p>
+                  )}
+                  {text.length > 10000 && (
+                    <p className="text-xs text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
+                      {t.tooManyCharacters.replace('{count}', (text.length - 10000).toString())}
+                    </p>
+                  )}
                 </div>
-                {text.length < 100 && text.length > 0 && (
-                  <p className="text-xs text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded">
-                    {t.charactersRemaining.replace('{count}', (100 - text.length).toString())}
-                  </p>
-                )}
-                {text.length === 0 && (
-                  <p className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">
-                    {t.minCharacters}
-                  </p>
-                )}
-                {text.length >= 100 && text.length <= 10000 && (
-                  <p className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    {t.ready}
-                  </p>
-                )}
-                {text.length > 10000 && (
-                  <p className="text-xs text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
-                    {t.tooManyCharacters.replace('{count}', (text.length - 10000).toString())}
-                  </p>
-                )}
-              </div>
               </div>
 
               {/* Column 2: Voice Selection - Stimme auswählen */}
               <div className="lg:col-span-1">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
-                  <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                  </svg>
-                  {t.voiceSelectionLabel}
-                </label>
-                <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                  {voices.length}
-                </span>
-              </div>
-              
-              {/* Gender Filter Buttons */}
-              <div className="flex gap-1 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setGenderFilter('all')}
-                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
-                    genderFilter === 'all'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {t.filterAll}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGenderFilter('male')}
-                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
-                    genderFilter === 'male'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {t.filterMale}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGenderFilter('female')}
-                  className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${
-                    genderFilter === 'female'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {t.filterFemale}
-                </button>
-              </div>
-              <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-1.5 bg-gray-50">
-                <div className="space-y-2">
-                  {/* German Voices */}
-                  {germanVoices.length > 0 && (
-                    <div>
-                      <h4 className="text-[10px] font-bold text-gray-700 mb-1 px-0.5 flex items-center gap-1">
-                        {t.germanVoices}
-                        <span className="text-gray-500 font-normal">({germanVoices.length})</span>
-                      </h4>
-                      <div className="grid gap-1">
-                        {germanVoices.map((voice) => (
-                          <div
-                            key={voice.id}
-                            className={`border rounded p-1.5 cursor-pointer transition-all bg-white ${
-                              selectedVoiceId === voice.id
-                                ? 'border-blue-500 ring-1 ring-blue-200'
-                                : 'border-gray-200 hover:border-blue-300'
-                            }`}
-                            onClick={() => setSelectedVoiceId(voice.id)}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="radio"
-                                name="voice"
-                                value={voice.id}
-                                checked={selectedVoiceId === voice.id}
-                                onChange={() => setSelectedVoiceId(voice.id)}
-                                className="w-3 h-3 text-blue-600 flex-shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 text-[10px] truncate">{voice.name}</h3>
-                                <p className="text-[9px] text-gray-500 truncate leading-tight">{voice.description}</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePreviewVoice(voice.id);
-                                }}
-                                disabled={loading}
-                                className="px-1.5 py-0.5 bg-green-600 text-white text-[9px] rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center gap-0.5 flex-shrink-0"
-                              >
-                                {previewingVoiceId === voice.id ? (
-                                  <>
-                                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    {t.stopButton}
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                    </svg>
-                                    {t.previewButton}
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                    </svg>
+                    {t.voiceSelectionLabel}
+                  </label>
+                  <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                    {voices.length}
+                  </span>
                 </div>
-              </div>
+
+                {/* Gender Filter Buttons */}
+                <div className="flex gap-1 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setGenderFilter('all')}
+                    className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${genderFilter === 'all'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    {t.filterAll}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenderFilter('male')}
+                    className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${genderFilter === 'male'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    {t.filterMale}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenderFilter('female')}
+                    className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${genderFilter === 'female'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    {t.filterFemale}
+                  </button>
+                </div>
+                <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-1.5 bg-gray-50">
+                  <div className="space-y-2">
+                    {/* German Voices */}
+                    {germanVoices.length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-bold text-gray-700 mb-1 px-0.5 flex items-center gap-1">
+                          {t.germanVoices}
+                          <span className="text-gray-500 font-normal">({germanVoices.length})</span>
+                        </h4>
+                        <div className="grid gap-1">
+                          {germanVoices.map((voice) => (
+                            <div
+                              key={voice.id}
+                              className={`border rounded p-1.5 cursor-pointer transition-all bg-white ${selectedVoiceId === voice.id
+                                  ? 'border-blue-500 ring-1 ring-blue-200'
+                                  : 'border-gray-200 hover:border-blue-300'
+                                }`}
+                              onClick={() => setSelectedVoiceId(voice.id)}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="radio"
+                                  name="voice"
+                                  value={voice.id}
+                                  checked={selectedVoiceId === voice.id}
+                                  onChange={() => setSelectedVoiceId(voice.id)}
+                                  className="w-3 h-3 text-blue-600 flex-shrink-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-gray-900 text-[10px] truncate">{voice.name}</h3>
+                                  <p className="text-[9px] text-gray-500 truncate leading-tight">{voice.description}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePreviewVoice(voice.id);
+                                  }}
+                                  disabled={loading}
+                                  className="px-1.5 py-0.5 bg-green-600 text-white text-[9px] rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center gap-0.5 flex-shrink-0"
+                                >
+                                  {previewingVoiceId === voice.id ? (
+                                    <>
+                                      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                      </svg>
+                                      {t.stopButton}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                      </svg>
+                                      {t.previewButton}
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+
+                  </div>
+                </div>
               </div>
 
               {/* Column 3: Voice Settings - Schnelleinstellungen */}
               <div className="lg:col-span-1">
-            <div className="border border-blue-200 rounded-lg p-4 bg-blue-50 h-full">
-              <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
-                </svg>
-                {t.voiceSettingsTitle}
-              </h3>
-              
-              {/* Preset Buttons - Moved to Top */}
-              <div className="mb-4 pb-4 border-b border-blue-200">
-                <p className="text-xs font-medium text-gray-700 mb-2">{t.presetsTitle}</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {/* Row 1: Standard & Common */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.5);
-                      setSimilarityBoost(0.75);
-                      setStyle(0);
-                      setUseSpeakerBoost(true);
-                    }}
-                    className={`px-3 py-2 text-xs bg-white border text-gray-700 rounded-lg hover:bg-gray-50 transition-colors relative ${
-                      isPresetActive(0.5, 0.75, 0, true) ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-300'
-                    }`}
-                  >
-                    {isPresetActive(0.5, 0.75, 0, true) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="font-semibold">{t.presetStandard}</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">{t.presetStandardDesc}</div>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.3);
-                      setSimilarityBoost(0.85);
-                      setStyle(0.5);
-                      setUseSpeakerBoost(true);
-                    }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-yellow-400 via-red-400 to-red-500 text-white font-bold rounded-lg hover:from-yellow-500 hover:to-red-600 transition-colors shadow-md relative ${
-                      isPresetActive(0.3, 0.85, 0.5, true) ? 'ring-4 ring-green-400' : ''
-                    }`}
-                  >
-                    {isPresetActive(0.3, 0.85, 0.5, true) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-center gap-1">
-                      <span>🇩🇪</span>
-                      <span>{t.presetGerman.replace('🇩🇪 ', '')}</span>
+                <div className="border border-blue-200 rounded-lg p-4 bg-blue-50 h-full">
+                  <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                    </svg>
+                    {t.voiceSettingsTitle}
+                  </h3>
+
+                  {/* Preset Buttons - Moved to Top */}
+                  <div className="mb-4 pb-4 border-b border-blue-200">
+                    <p className="text-xs font-medium text-gray-700 mb-2">{t.presetsTitle}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {/* Row 1: Standard & Common */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.5);
+                          setSimilarityBoost(0.75);
+                          setStyle(0);
+                          setUseSpeakerBoost(true);
+                        }}
+                        className={`px-3 py-2 text-xs bg-white border text-gray-700 rounded-lg hover:bg-gray-50 transition-colors relative ${isPresetActive(0.5, 0.75, 0, true) ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-300'
+                          }`}
+                      >
+                        {isPresetActive(0.5, 0.75, 0, true) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="font-semibold">{t.presetStandard}</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">{t.presetStandardDesc}</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.3);
+                          setSimilarityBoost(0.85);
+                          setStyle(0.5);
+                          setUseSpeakerBoost(true);
+                        }}
+                        className={`px-3 py-2 text-xs bg-gradient-to-br from-yellow-400 via-red-400 to-red-500 text-white font-bold rounded-lg hover:from-yellow-500 hover:to-red-600 transition-colors shadow-md relative ${isPresetActive(0.3, 0.85, 0.5, true) ? 'ring-4 ring-green-400' : ''
+                          }`}
+                      >
+                        {isPresetActive(0.3, 0.85, 0.5, true) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-center gap-1">
+                          <span>🇩🇪</span>
+                          <span>{t.presetGerman.replace('🇩🇪 ', '')}</span>
+                        </div>
+                        <div className="text-[10px] mt-0.5">{t.presetGermanDesc}</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.8);
+                          setSimilarityBoost(0.5);
+                          setStyle(0);
+                          setUseSpeakerBoost(false);
+                        }}
+                        className={`px-3 py-2 text-xs bg-white border text-gray-700 rounded-lg hover:bg-gray-50 transition-colors relative ${isPresetActive(0.8, 0.5, 0, false) ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-300'
+                          }`}
+                      >
+                        {isPresetActive(0.8, 0.5, 0, false) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="font-semibold">{t.presetAudiobook}</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">{t.presetAudiobookDesc}</div>
+                      </button>
+
+                      {/* Row 2: Expressive */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.15);
+                          setSimilarityBoost(0.9);
+                          setStyle(0.65);
+                          setUseSpeakerBoost(true);
+                        }}
+                        className={`px-3 py-2 text-xs bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md relative ${isPresetActive(0.15, 0.9, 0.65, true) ? 'ring-4 ring-green-400' : ''
+                          }`}
+                      >
+                        {isPresetActive(0.15, 0.9, 0.65, true) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div>{t.presetExpressive}</div>
+                        <div className="text-[10px] mt-0.5">{t.presetExpressiveDesc}</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.2);
+                          setSimilarityBoost(0.95);
+                          setStyle(0.8);
+                          setUseSpeakerBoost(true);
+                        }}
+                        className={`px-3 py-2 text-xs bg-gradient-to-br from-red-600 to-orange-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-orange-700 transition-colors shadow-md relative ${isPresetActive(0.2, 0.95, 0.8, true) ? 'ring-4 ring-green-400' : ''
+                          }`}
+                      >
+                        {isPresetActive(0.2, 0.95, 0.8, true) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div>{t.presetDramatic}</div>
+                        <div className="text-[10px] mt-0.5">{t.presetDramaticDesc}</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.25);
+                          setSimilarityBoost(0.88);
+                          setStyle(0.6);
+                          setUseSpeakerBoost(true);
+                        }}
+                        className={`px-3 py-2 text-xs bg-gradient-to-br from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-colors shadow-md relative ${isPresetActive(0.25, 0.88, 0.6, true) ? 'ring-4 ring-green-400' : ''
+                          }`}
+                      >
+                        {isPresetActive(0.25, 0.88, 0.6, true) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div>{t.presetPodcast}</div>
+                        <div className="text-[10px] mt-0.5">{t.presetPodcastDesc}</div>
+                      </button>
+
+                      {/* Row 3: Specialized */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.18);
+                          setSimilarityBoost(0.92);
+                          setStyle(0.75);
+                          setUseSpeakerBoost(true);
+                        }}
+                        className={`px-3 py-2 text-xs bg-gradient-to-br from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors shadow-md relative ${isPresetActive(0.18, 0.92, 0.75, true) ? 'ring-4 ring-green-400' : ''
+                          }`}
+                      >
+                        {isPresetActive(0.18, 0.92, 0.75, true) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div>{t.presetAdvertising}</div>
+                        <div className="text-[10px] mt-0.5">{t.presetAdvertisingDesc}</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.12);
+                          setSimilarityBoost(0.95);
+                          setStyle(0.85);
+                          setUseSpeakerBoost(true);
+                        }}
+                        className={`px-3 py-2 text-xs bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-lg hover:from-indigo-700 hover:to-purple-800 transition-colors shadow-md relative ${isPresetActive(0.12, 0.95, 0.85, true) ? 'ring-4 ring-green-400' : ''
+                          }`}
+                      >
+                        {isPresetActive(0.12, 0.95, 0.85, true) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div>{t.presetStorytelling}</div>
+                        <div className="text-[10px] mt-0.5">{t.presetStorytellingDesc}</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStability(0.22);
+                          setSimilarityBoost(0.87);
+                          setStyle(0.55);
+                          setUseSpeakerBoost(true);
+                        }}
+                        className={`px-3 py-2 text-xs bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-colors shadow-md relative ${isPresetActive(0.22, 0.87, 0.55, true) ? 'ring-4 ring-green-400' : ''
+                          }`}
+                      >
+                        {isPresetActive(0.22, 0.87, 0.55, true) && (
+                          <div className="absolute top-1 right-1">
+                            <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div>{t.presetTutorial}</div>
+                        <div className="text-[10px] mt-0.5">{t.presetTutorialDesc}</div>
+                      </button>
                     </div>
-                    <div className="text-[10px] mt-0.5">{t.presetGermanDesc}</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.8);
-                      setSimilarityBoost(0.5);
-                      setStyle(0);
-                      setUseSpeakerBoost(false);
-                    }}
-                    className={`px-3 py-2 text-xs bg-white border text-gray-700 rounded-lg hover:bg-gray-50 transition-colors relative ${
-                      isPresetActive(0.8, 0.5, 0, false) ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-300'
-                    }`}
-                  >
-                    {isPresetActive(0.8, 0.5, 0, false) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="font-semibold">{t.presetAudiobook}</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">{t.presetAudiobookDesc}</div>
-                  </button>
-
-                  {/* Row 2: Expressive */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.15);
-                      setSimilarityBoost(0.9);
-                      setStyle(0.65);
-                      setUseSpeakerBoost(true);
-                    }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md relative ${
-                      isPresetActive(0.15, 0.9, 0.65, true) ? 'ring-4 ring-green-400' : ''
-                    }`}
-                  >
-                    {isPresetActive(0.15, 0.9, 0.65, true) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div>{t.presetExpressive}</div>
-                    <div className="text-[10px] mt-0.5">{t.presetExpressiveDesc}</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.2);
-                      setSimilarityBoost(0.95);
-                      setStyle(0.8);
-                      setUseSpeakerBoost(true);
-                    }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-red-600 to-orange-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-orange-700 transition-colors shadow-md relative ${
-                      isPresetActive(0.2, 0.95, 0.8, true) ? 'ring-4 ring-green-400' : ''
-                    }`}
-                  >
-                    {isPresetActive(0.2, 0.95, 0.8, true) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div>{t.presetDramatic}</div>
-                    <div className="text-[10px] mt-0.5">{t.presetDramaticDesc}</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.25);
-                      setSimilarityBoost(0.88);
-                      setStyle(0.6);
-                      setUseSpeakerBoost(true);
-                    }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-colors shadow-md relative ${
-                      isPresetActive(0.25, 0.88, 0.6, true) ? 'ring-4 ring-green-400' : ''
-                    }`}
-                  >
-                    {isPresetActive(0.25, 0.88, 0.6, true) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div>{t.presetPodcast}</div>
-                    <div className="text-[10px] mt-0.5">{t.presetPodcastDesc}</div>
-                  </button>
-
-                  {/* Row 3: Specialized */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.18);
-                      setSimilarityBoost(0.92);
-                      setStyle(0.75);
-                      setUseSpeakerBoost(true);
-                    }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors shadow-md relative ${
-                      isPresetActive(0.18, 0.92, 0.75, true) ? 'ring-4 ring-green-400' : ''
-                    }`}
-                  >
-                    {isPresetActive(0.18, 0.92, 0.75, true) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div>{t.presetAdvertising}</div>
-                    <div className="text-[10px] mt-0.5">{t.presetAdvertisingDesc}</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.12);
-                      setSimilarityBoost(0.95);
-                      setStyle(0.85);
-                      setUseSpeakerBoost(true);
-                    }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-lg hover:from-indigo-700 hover:to-purple-800 transition-colors shadow-md relative ${
-                      isPresetActive(0.12, 0.95, 0.85, true) ? 'ring-4 ring-green-400' : ''
-                    }`}
-                  >
-                    {isPresetActive(0.12, 0.95, 0.85, true) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div>{t.presetStorytelling}</div>
-                    <div className="text-[10px] mt-0.5">{t.presetStorytellingDesc}</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStability(0.22);
-                      setSimilarityBoost(0.87);
-                      setStyle(0.55);
-                      setUseSpeakerBoost(true);
-                    }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-colors shadow-md relative ${
-                      isPresetActive(0.22, 0.87, 0.55, true) ? 'ring-4 ring-green-400' : ''
-                    }`}
-                  >
-                    {isPresetActive(0.22, 0.87, 0.55, true) && (
-                      <div className="absolute top-1 right-1">
-                        <svg className="w-4 h-4 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                    <div>{t.presetTutorial}</div>
-                    <div className="text-[10px] mt-0.5">{t.presetTutorialDesc}</div>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Stability */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t.stability}: {stability.toFixed(2)}
-                    <span className="text-gray-500 ml-1">{t.stabilityDesc}</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={stability}
-                    onChange={(e) => setStability(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{t.moreEmotion}</span>
-                    <span>{t.moreStable}</span>
                   </div>
-                </div>
 
-                {/* Similarity Boost */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t.similarityBoost}: {similarityBoost.toFixed(2)}
-                    <span className="text-gray-500 ml-1">{t.similarityBoostDesc}</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={similarityBoost}
-                    onChange={(e) => setSimilarityBoost(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{t.lower}</span>
-                    <span>{t.higher}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Stability */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        {t.stability}: {stability.toFixed(2)}
+                        <span className="text-gray-500 ml-1">{t.stabilityDesc}</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={stability}
+                        onChange={(e) => setStability(parseFloat(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>{t.moreEmotion}</span>
+                        <span>{t.moreStable}</span>
+                      </div>
+                    </div>
+
+                    {/* Similarity Boost */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        {t.similarityBoost}: {similarityBoost.toFixed(2)}
+                        <span className="text-gray-500 ml-1">{t.similarityBoostDesc}</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={similarityBoost}
+                        onChange={(e) => setSimilarityBoost(parseFloat(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>{t.lower}</span>
+                        <span>{t.higher}</span>
+                      </div>
+                    </div>
+
+                    {/* Style Exaggeration */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        {t.style}: {style.toFixed(2)}
+                        <span className="text-gray-500 ml-1">{t.styleDesc}</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={style}
+                        onChange={(e) => setStyle(parseFloat(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>{t.normal}</span>
+                        <span>{t.dramatic}</span>
+                      </div>
+                    </div>
+
+                    {/* Speaker Boost */}
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={useSpeakerBoost}
+                          onChange={(e) => setUseSpeakerBoost(e.target.checked)}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-xs font-medium text-gray-700">
+                          {t.speakerBoost}
+                          <span className="block text-gray-500 font-normal">{t.speakerBoostDesc}</span>
+                        </span>
+                      </label>
+                    </div>
                   </div>
+
+
                 </div>
-
-                {/* Style Exaggeration */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t.style}: {style.toFixed(2)}
-                    <span className="text-gray-500 ml-1">{t.styleDesc}</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={style}
-                    onChange={(e) => setStyle(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{t.normal}</span>
-                    <span>{t.dramatic}</span>
-                  </div>
-                </div>
-
-                {/* Speaker Boost */}
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={useSpeakerBoost}
-                      onChange={(e) => setUseSpeakerBoost(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-xs font-medium text-gray-700">
-                      {t.speakerBoost}
-                      <span className="block text-gray-500 font-normal">{t.speakerBoostDesc}</span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-
-            </div>
               </div>
             </div>
 
@@ -1083,7 +1068,7 @@ export default function Home() {
                           </>
                         )}
                       </button>
-                      
+
                       <button
                         type="button"
                         onClick={handleDownload}

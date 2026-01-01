@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import ApiKey from '@/models/ApiKey';
 
@@ -40,16 +40,16 @@ export async function POST() {
           const remainingCharacters = characterLimit - characterCount;
 
           // Update database with auto-reactivation
-          const updateData: any = {
+          const updateData: { remainingTokens: number; totalTokens: number; isActive?: boolean } = {
             remainingTokens: remainingCharacters,
             totalTokens: characterLimit,
           };
-          
+
           // Auto-reactivate key if it has remaining quota
           if (remainingCharacters > 0) {
             updateData.isActive = true;
           }
-          
+
           await ApiKey.findByIdAndUpdate(key._id, updateData);
 
           return {
@@ -61,18 +61,18 @@ export async function POST() {
             remainingCharacters,
             percentage: Math.round((remainingCharacters / characterLimit) * 100),
           };
-        } catch (error: any) {
+        } catch (error) {
           return {
             id: key._id,
             name: key.name,
             success: false,
-            error: error.message,
+            error: error instanceof Error ? error.message : 'Unknown error',
           };
         }
       })
     );
 
-    const processedResults = results.map((result) => 
+    const processedResults = results.map((result) =>
       result.status === 'fulfilled' ? result.value : { success: false, error: 'Request failed' }
     );
 
@@ -88,10 +88,10 @@ export async function POST() {
         results: processedResults,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Check all quotas error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to check quotas' },
+      { success: false, error: error instanceof Error ? error.message : 'Failed to check quotas' },
       { status: 500 }
     );
   }

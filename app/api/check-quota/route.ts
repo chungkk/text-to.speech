@@ -26,11 +26,11 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('ElevenLabs API Error:', response.status, errorText);
-      
+
       if (response.status === 401) {
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: 'Invalid API key - Key may be expired, revoked, or incorrect',
             details: errorText,
             keyPreview: `${apiKey.substring(0, 10)}...`,
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     const subscription = await response.json();
     console.log('Subscription data:', subscription);
-    
+
     const characterCount = subscription.character_count || 0;
     const characterLimit = subscription.character_limit || 10000;
     const remainingCharacters = characterLimit - characterCount;
@@ -51,16 +51,16 @@ export async function POST(request: NextRequest) {
     // Update database if keyId provided
     if (keyId) {
       await connectDB();
-      const updateData: any = {
+      const updateData: { remainingTokens: number; totalTokens: number; isActive?: boolean } = {
         remainingTokens: remainingCharacters,
         totalTokens: characterLimit,
       };
-      
+
       // Auto-reactivate key if it has remaining quota
       if (remainingCharacters > 0) {
         updateData.isActive = true;
       }
-      
+
       await ApiKey.findByIdAndUpdate(keyId, updateData);
     }
 
@@ -73,19 +73,19 @@ export async function POST(request: NextRequest) {
         percentage: Math.round((remainingCharacters / characterLimit) * 100),
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Check quota error:', error);
-    
+
     // Handle specific ElevenLabs errors
-    if (error.statusCode === 401) {
+    if ((error as { statusCode?: number }).statusCode === 401) {
       return NextResponse.json(
         { success: false, error: 'Invalid API key' },
         { status: 401 }
       );
     }
-    
+
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to check quota' },
+      { success: false, error: error instanceof Error ? error.message : 'Failed to check quota' },
       { status: 500 }
     );
   }

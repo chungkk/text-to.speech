@@ -46,7 +46,7 @@ export default function AdminPage() {
       if (data.success) {
         setKeys(data.data);
         setPagination(data.pagination);
-        
+
         // Calculate next key number based on existing keys
         const keyNumbers = data.data
           .map((k: ApiKey) => {
@@ -54,7 +54,7 @@ export default function AdminPage() {
             return match ? parseInt(match[1]) : 0;
           })
           .filter((n: number) => n > 0);
-        
+
         const maxNumber = keyNumbers.length > 0 ? Math.max(...keyNumbers) : 40;
         setNextKeyNumber(maxNumber + 1);
       }
@@ -146,7 +146,7 @@ export default function AdminPage() {
 
       if (data.success) {
         await fetchKeys(pagination.page);
-        const statusMessage = data.data.remainingCharacters > 0 
+        const statusMessage = data.data.remainingCharacters > 0
           ? `✓ Quota refreshed: ${data.data.remainingCharacters.toLocaleString()} / ${data.data.characterLimit.toLocaleString()} (${data.data.percentage}%) - Key reactivated`
           : `⚠ No remaining quota: 0 / ${data.data.characterLimit.toLocaleString()}`;
         setSuccess(statusMessage);
@@ -154,8 +154,8 @@ export default function AdminPage() {
       } else {
         setError(data.error || 'Failed to check quota');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to check quota');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to check quota');
     } finally {
       setCheckingQuota(null);
     }
@@ -175,10 +175,10 @@ export default function AdminPage() {
 
       if (data.success) {
         await fetchKeys(pagination.page);
-        
+
         const { successful, failed, results } = data.data;
-        const activeKeys = results.filter((r: any) => r.success && r.remainingCharacters > 0).length;
-        
+        const activeKeys = results.filter((r: { success: boolean; remainingCharacters?: number }) => r.success && (r.remainingCharacters ?? 0) > 0).length;
+
         setSuccess(
           `✓ Refresh Complete! Total: ${data.data.total} | Successful: ${successful} | Failed: ${failed} | Active: ${activeKeys}` +
           (activeKeys > 0 ? ` - ${activeKeys} key(s) reactivated` : '')
@@ -187,8 +187,8 @@ export default function AdminPage() {
       } else {
         setError(data.error || 'Failed to refresh all quotas');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to refresh all quotas');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh all quotas');
     } finally {
       setRefreshingAll(false);
     }
@@ -316,9 +316,8 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-900">{key.name}</span>
                           <span
-                            className={`px-2 py-0.5 text-xs rounded ${
-                              key.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}
+                            className={`px-2 py-0.5 text-xs rounded ${key.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}
                           >
                             {key.isActive ? 'Active' : 'Inactive'}
                           </span>
@@ -341,10 +340,9 @@ export default function AdminPage() {
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
-                              className={`h-2 rounded-full transition-all ${
-                                (key.remainingTokens / key.totalTokens) > 0.5 ? 'bg-green-500' :
-                                (key.remainingTokens / key.totalTokens) > 0.2 ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}
+                              className={`h-2 rounded-full transition-all ${(key.remainingTokens / key.totalTokens) > 0.5 ? 'bg-green-500' :
+                                  (key.remainingTokens / key.totalTokens) > 0.2 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
                               style={{ width: `${(key.remainingTokens / key.totalTokens) * 100}%` }}
                             ></div>
                           </div>
@@ -377,11 +375,10 @@ export default function AdminPage() {
                           </button>
                           <button
                             onClick={() => handleToggleActive(key._id, key.isActive)}
-                            className={`px-3 py-1 rounded text-sm ${
-                              key.isActive
+                            className={`px-3 py-1 rounded text-sm ${key.isActive
                                 ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                                 : 'bg-green-100 text-green-800 hover:bg-green-200'
-                            }`}
+                              }`}
                           >
                             {key.isActive ? 'Disable' : 'Enable'}
                           </button>
@@ -429,11 +426,10 @@ export default function AdminPage() {
                         <button
                           key={page}
                           onClick={() => fetchKeys(page)}
-                          className={`px-3 py-2 rounded ${
-                            page === pagination.page
+                          className={`px-3 py-2 rounded ${page === pagination.page
                               ? 'bg-blue-600 text-white'
                               : 'bg-white border border-gray-300 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           {page}
                         </button>
