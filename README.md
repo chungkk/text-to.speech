@@ -12,7 +12,7 @@
 
 ## Cài đặt
 
-### 1. Cài đặt dependencies
+### 1. Cài đặt dependencies11
 
 ```bash
 npm install
@@ -68,6 +68,7 @@ Truy cập: http://localhost:3000
 ### 3. Quản lý API Keys
 
 Trong trang Admin, bạn có thể:
+
 - Xem danh sách tất cả API keys
 - Xem số tokens còn lại của mỗi key
 - Activate/Deactivate keys
@@ -82,6 +83,7 @@ Trong trang Admin, bạn có thể:
 ## Voice ID
 
 Ứng dụng sử dụng **Helmut - German Epic Trailer Voice**:
+
 - Voice ID: `TX3LPaxmHKxFdv7VOQHJ`
 - Model: `eleven_multilingual_v2`
 
@@ -115,14 +117,17 @@ eleven/
 ## Troubleshooting
 
 ### Lỗi kết nối MongoDB
+
 - Kiểm tra MongoDB đang chạy: `mongod`
 - Kiểm tra connection string trong `.env.local`
 
 ### Lỗi "No API key available"
+
 - Thêm ít nhất một API key trong trang Admin
 - Kiểm tra API key còn tokens
 - Kiểm tra key đang ở trạng thái Active
 
 ### Lỗi ElevenLabs API
+
 - Kiểm tra API key còn hiệu lực
 - Kiểm tra quota còn lại trên ElevenLabs dashboard
