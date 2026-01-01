@@ -93,6 +93,19 @@ export interface Translations {
   errorTextTooLong: string;
   errorRateLimit: string;
   errorGeneral: string;
+  
+  // Quota
+  checkingQuota: string;
+  syncingApi: string;
+  quotaApiTitle: string;
+  syncing: string;
+  syncAll: string;
+  maxTokensPerRequest: string;
+  totalRemaining: string;
+  activeApiKeys: string;
+  warning: string;
+  quotaLowWarning: string;
+  detailApiKeys: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -189,6 +202,19 @@ export const translations: Record<Language, Translations> = {
     errorTextTooLong: 'Text darf maximal 10.000 Zeichen haben',
     errorRateLimit: 'Rate-Limit überschritten. Versuchen Sie es später erneut.',
     errorGeneral: 'Ein Fehler ist aufgetreten',
+    
+    // Quota
+    checkingQuota: 'Überprüfe Quota aller API-Keys...',
+    syncingApi: 'Synchronisiere mit ElevenLabs API',
+    quotaApiTitle: 'API Quota (Alle Keys geprüft)',
+    syncing: 'Synchronisiere...',
+    syncAll: 'Alle synchronisieren',
+    maxTokensPerRequest: 'Max Tokens/Anfrage',
+    totalRemaining: 'Gesamt verbleibend',
+    activeApiKeys: 'Aktive API-Keys',
+    warning: 'Warnung',
+    quotaLowWarning: 'Verfügbares Quota niedrig',
+    detailApiKeys: 'API-Keys Details',
   },
   
   en: {
@@ -284,6 +310,19 @@ export const translations: Record<Language, Translations> = {
     errorTextTooLong: 'Text must be less than 10,000 characters',
     errorRateLimit: 'Rate limit exceeded. Please try again later.',
     errorGeneral: 'An error occurred',
+    
+    // Quota
+    checkingQuota: 'Checking quota for all API keys...',
+    syncingApi: 'Syncing with ElevenLabs API',
+    quotaApiTitle: 'API Quota (All Keys Checked)',
+    syncing: 'Syncing...',
+    syncAll: 'Sync All',
+    maxTokensPerRequest: 'Max Tokens/Request',
+    totalRemaining: 'Total Remaining',
+    activeApiKeys: 'Active API Keys',
+    warning: 'Warning',
+    quotaLowWarning: 'Available quota is low',
+    detailApiKeys: 'API Keys Details',
   },
   
   vi: {
@@ -379,6 +418,19 @@ export const translations: Record<Language, Translations> = {
     errorTextTooLong: 'Văn bản không được quá 10.000 ký tự',
     errorRateLimit: 'Vượt quá giới hạn. Vui lòng thử lại sau.',
     errorGeneral: 'Đã xảy ra lỗi',
+    
+    // Quota
+    checkingQuota: 'Đang kiểm tra quota của TẤT CẢ API keys...',
+    syncingApi: 'Đang sync với ElevenLabs API',
+    quotaApiTitle: 'Quota API (Đã kiểm tra TẤT CẢ keys)',
+    syncing: 'Đang sync...',
+    syncAll: 'Sync lại tất cả',
+    maxTokensPerRequest: 'Max tokens/lần',
+    totalRemaining: 'Tổng còn lại',
+    activeApiKeys: 'API keys hoạt động',
+    warning: 'Cảnh báo',
+    quotaLowWarning: 'Quota khả dụng thấp',
+    detailApiKeys: 'Chi tiết API keys',
   },
 };
 

@@ -12,6 +12,18 @@ interface Voice {
   previewText: string;
 }
 
+interface QuotaInfo {
+  maxTokensPerRequest: number;
+  totalAvailableTokens: number;
+  activeKeysCount: number;
+  keys: Array<{
+    name: string;
+    remainingTokens: number;
+    totalTokens: number;
+    percentageRemaining: string;
+  }>;
+}
+
 export default function Home() {
   // Language state with localStorage
   const [currentLang, setCurrentLang] = useState<Language>('de');
@@ -56,6 +68,10 @@ export default function Home() {
   const [style, setStyle] = useState(0.5);
   const [useSpeakerBoost, setUseSpeakerBoost] = useState(true);
 
+  // Quota states
+  const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
+  const [loadingQuota, setLoadingQuota] = useState(false);
+
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
     return stability === presetStability && 
@@ -74,6 +90,30 @@ export default function Home() {
         }
       })
       .catch(err => console.error('Failed to load voices:', err));
+  }, []);
+
+  // Fetch quota info
+  const fetchQuotaInfo = async () => {
+    setLoadingQuota(true);
+    try {
+      const response = await fetch('/api/quota');
+      const data = await response.json();
+      if (data.success) {
+        setQuotaInfo(data.data);
+      } else {
+        setError(data.error || 'Không thể lấy thông tin quota');
+      }
+    } catch (err) {
+      console.error('Failed to fetch quota:', err);
+      setError('Lỗi khi lấy thông tin quota');
+    } finally {
+      setLoadingQuota(false);
+    }
+  };
+
+  // Load quota info on mount
+  useEffect(() => {
+    fetchQuotaInfo();
   }, []);
 
   // Helper function to determine gender from voice name
@@ -304,6 +344,114 @@ export default function Home() {
         <div className="bg-white rounded-lg shadow-xl p-8">
 
           <form onSubmit={handleSubmit}>
+            {/* Quota Info Display */}
+            {loadingQuota && !quotaInfo ? (
+              <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-6 rounded-xl border-2 border-blue-300 mb-6">
+                <div className="flex items-center justify-center gap-3">
+                  <svg className="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <div>
+                    <div className="font-semibold text-blue-800">{t.checkingQuota || 'Đang kiểm tra quota của TẤT CẢ API keys...'}</div>
+                    <div className="text-sm text-blue-600">{t.syncingApi || 'Đang sync với ElevenLabs API'}</div>
+                  </div>
+                </div>
+              </div>
+            ) : quotaInfo ? (
+              <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-xl border-2 border-green-300 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
+                    </svg>
+                    {t.quotaApiTitle || 'Quota API (Đã kiểm tra TẤT CẢ keys)'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={fetchQuotaInfo}
+                    disabled={loadingQuota}
+                    className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {loadingQuota ? (
+                      <>
+                        <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {t.syncing || 'Đang sync...'}
+                      </>
+                    ) : (
+                      <>
+                        🔄 {t.syncAll || 'Sync lại tất cả'}
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="bg-white p-3 rounded-lg">
+                    <div className="text-xs text-gray-600 mb-1">{t.maxTokensPerRequest || 'Max tokens/lần'}</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {quotaInfo.maxTokensPerRequest.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <div className="text-xs text-gray-600 mb-1">{t.totalRemaining || 'Tổng còn lại'}</div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {quotaInfo.totalAvailableTokens.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <div className="text-xs text-gray-600 mb-1">{t.activeApiKeys || 'API keys hoạt động'}</div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {quotaInfo.activeKeysCount}
+                    </div>
+                  </div>
+                </div>
+
+                {quotaInfo.maxTokensPerRequest < 5000 && (
+                  <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-3 text-sm text-yellow-800 mb-4">
+                    ⚠️ <strong>{t.warning || 'Cảnh báo'}:</strong> {t.quotaLowWarning || `Quota khả dụng thấp (${quotaInfo.maxTokensPerRequest.toLocaleString()} tokens).`}
+                  </div>
+                )}
+
+                {/* Show individual key quotas */}
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd"/>
+                    </svg>
+                    {t.detailApiKeys || `Chi tiết ${quotaInfo.keys.length} API keys`}
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {quotaInfo.keys.map((key, index) => (
+                      <div key={index} className="bg-white p-3 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-medium text-gray-800">{key.name}</span>
+                          <span className="text-sm text-green-600 font-semibold">{key.percentageRemaining}%</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm text-gray-600">
+                          <span>{key.remainingTokens.toLocaleString()} / {key.totalTokens.toLocaleString()} tokens</span>
+                        </div>
+                        <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${
+                              parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' :
+                              parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            }`}
+                            style={{ width: `${key.percentageRemaining}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            ) : null}
+
             {/* 3-Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* Column 1: Text Input */}
