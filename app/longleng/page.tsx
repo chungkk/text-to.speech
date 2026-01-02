@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import QuotaLoadingButton from '@/components/QuotaLoadingButton';
 import { Language } from '@/lib/translations';
 
 interface Voice {
@@ -44,7 +45,8 @@ export default function LongTextSplitter() {
   const [loading, setLoading] = useState(false);
   const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
   const [loadingQuota, setLoadingQuota] = useState(false);
-  
+  const [quotaLoaded, setQuotaLoaded] = useState(false);
+
   // Voice and audio states
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState('');
@@ -54,7 +56,7 @@ export default function LongTextSplitter() {
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [error, setError] = useState('');
   const [generatingAll, setGeneratingAll] = useState(false);
-  
+
   // Voice Settings
   const [stability, setStability] = useState(0.3);
   const [similarityBoost, setSimilarityBoost] = useState(0.85);
@@ -67,10 +69,10 @@ export default function LongTextSplitter() {
 
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
-    return stability === presetStability && 
-           similarityBoost === presetSimilarity && 
-           style === presetStyle && 
-           useSpeakerBoost === presetBoost;
+    return stability === presetStability &&
+      similarityBoost === presetSimilarity &&
+      style === presetStyle &&
+      useSpeakerBoost === presetBoost;
   };
 
   useEffect(() => {
@@ -101,11 +103,13 @@ export default function LongTextSplitter() {
   // Fetch quota info
   const fetchQuotaInfo = async () => {
     setLoadingQuota(true);
+    setQuotaLoaded(false);
     try {
       const response = await fetch('/api/quota');
       const data = await response.json();
       if (data.success) {
         setQuotaInfo(data.data);
+        setQuotaLoaded(true);
       } else {
         setError(data.error || 'Không thể lấy thông tin quota');
       }
@@ -123,20 +127,20 @@ export default function LongTextSplitter() {
   }, []);
 
   // Group voices by language
-  const germanVoices = voices.filter(v => 
+  const germanVoices = voices.filter(v =>
     v.language?.includes('Deutsch') || v.language?.includes('DE')
   );
-  const englishVoices = voices.filter(v => 
+  const englishVoices = voices.filter(v =>
     v.language?.includes('English') || v.language?.includes('British')
   );
-  const vietnameseVoices = voices.filter(v => 
+  const vietnameseVoices = voices.filter(v =>
     v.language?.includes('Vietnamese')
   );
 
   const splitTextByApiQuotas = (text: string, apiKeys: QuotaInfo['keys']): { chunk: string; suggestedApiKey: string; maxTokens: number }[] => {
     const chunks: { chunk: string; suggestedApiKey: string; maxTokens: number }[] = [];
     let startIndex = 0;
-    
+
     // Sort keys: smaller quotas first to avoid wasting large quotas on small texts
     const sortedKeys = [...apiKeys].sort((a, b) => a.remainingTokens - b.remainingTokens);
     const usedKeyIds = new Set<string>();
@@ -146,43 +150,43 @@ export default function LongTextSplitter() {
 
     while (startIndex < text.length) {
       const remainingText = text.length - startIndex;
-      
+
       // Find best-fit API key: smallest key that can fit the remaining text (or largest available chunk)
       let bestKey = null;
       let bestKeyIndex = -1;
-      
+
       for (let i = 0; i < sortedKeys.length; i++) {
         const key = sortedKeys[i];
         if (usedKeyIds.has(key.name)) continue; // Skip already used keys
-        
+
         const safeMaxLength = Math.min(key.remainingTokens - 50, 9950);
         if (safeMaxLength < 100) continue; // Skip keys with insufficient quota
-        
+
         // Best fit: smallest key that can handle remaining text
         if (safeMaxLength >= remainingText) {
           bestKey = key;
           bestKeyIndex = i;
           break; // Found perfect fit
         }
-        
+
         // If no perfect fit yet, keep track of largest available
         if (!bestKey || key.remainingTokens > bestKey.remainingTokens) {
           bestKey = key;
           bestKeyIndex = i;
         }
       }
-      
+
       if (!bestKey) {
         const remaining = text.length - startIndex;
         console.error(`❌ Ran out of API keys! Remaining text: ${remaining} chars`);
         setError(`Không đủ API keys để chia hết text. Còn thiếu ${remaining} ký tự. Vui lòng thêm API keys hoặc chia text nhỏ hơn.`);
         break;
       }
-      
+
       const currentApiKey = bestKey;
-      
+
       console.log(`\n🎯 Best-fit key: ${currentApiKey.name} (${currentApiKey.remainingTokens} tokens) for ${remainingText} chars`);
-      
+
       // Safety buffer: use 50 chars less than quota, max 9950 (closer to API limit)
       const safeMaxLength = Math.min(currentApiKey.remainingTokens - 50, 9950);
       const minLength = Math.min(Math.floor(safeMaxLength * 0.8), safeMaxLength - 100);
@@ -203,14 +207,14 @@ export default function LongTextSplitter() {
       // Find natural break point
       let endIndex = startIndex + safeMaxLength;
       const segment = text.slice(startIndex, endIndex);
-      
+
       const lastPeriod = segment.lastIndexOf('.');
       const lastExclamation = segment.lastIndexOf('!');
       const lastQuestion = segment.lastIndexOf('?');
       const lastNewline = segment.lastIndexOf('\n');
-      
+
       const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion, lastNewline);
-      
+
       if (lastSentenceEnd > minLength) {
         endIndex = startIndex + lastSentenceEnd + 1;
       } else {
@@ -226,9 +230,9 @@ export default function LongTextSplitter() {
         suggestedApiKey: currentApiKey.name,
         maxTokens: currentApiKey.remainingTokens
       });
-      
+
       console.log(`📦 Chunk ${chunks.length}: ${chunkText.length} chars → ${currentApiKey.name}`);
-      
+
       // Mark this key as used
       usedKeyIds.add(currentApiKey.name);
 
@@ -246,7 +250,7 @@ export default function LongTextSplitter() {
     console.log(`   - Original text: ${text.length} chars`);
     console.log(`   - Total in chunks: ${totalCharsInChunks} chars`);
     console.log(`   - Difference: ${text.length - totalCharsInChunks} chars (whitespace trimmed)`);
-    chunks.forEach((c, i) => console.log(`   ${i+1}. ${c.chunk.length} chars → ${c.suggestedApiKey}`));
+    chunks.forEach((c, i) => console.log(`   ${i + 1}. ${c.chunk.length} chars → ${c.suggestedApiKey}`));
 
     return chunks;
   };
@@ -254,35 +258,35 @@ export default function LongTextSplitter() {
   const handleSplit = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       // Force refresh quota to get real-time data from ElevenLabs
       console.log('🔄 Refreshing quota info before split...');
       await fetchQuotaInfo();
-      
+
       if (!quotaInfo || quotaInfo.keys.length === 0) {
         setError('Không có API keys khả dụng. Vui lòng thêm API keys trong Admin Panel.');
         return;
       }
-      
+
       console.log('📊 Available quotas:', quotaInfo.keys.map(k => `${k.name}: ${k.remainingTokens} tokens`));
       console.log(`📄 Input text: ${inputText.length} characters`);
-      
+
       // Split text using all available API keys
       const chunks = splitTextByApiQuotas(inputText, quotaInfo.keys);
-      
+
       if (chunks.length === 0) {
         setError('Không thể chia text. Vui lòng kiểm tra quota API keys.');
         return;
       }
-      
+
       setSplitTexts(chunks);
       setAudioDataMap(new Map()); // Clear previous audio
-      
+
       // Show summary
       const totalChars = chunks.reduce((sum, c) => sum + c.chunk.length, 0);
       console.log(`📊 Summary: ${chunks.length} chunks, ${totalChars} total chars (original: ${inputText.length})`);
-      
+
       if (totalChars !== inputText.length) {
         console.warn(`⚠️ Character count mismatch! Original: ${inputText.length}, Split: ${totalChars}`);
       }
@@ -305,7 +309,7 @@ export default function LongTextSplitter() {
 
     try {
       console.log(`🎵 Generating audio for chunk ${index + 1} using suggested API: ${textChunk.suggestedApiKey}`);
-      
+
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: {
@@ -336,7 +340,7 @@ export default function LongTextSplitter() {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      
+
       const audio = new Audio(url);
       await new Promise((resolve) => {
         audio.onloadedmetadata = resolve;
@@ -522,7 +526,7 @@ export default function LongTextSplitter() {
 
       // Convert to WAV
       const wavBlob = await audioBufferToWav(mergedBuffer);
-      
+
       // Download
       const url = window.URL.createObjectURL(wavBlob);
       const a = document.createElement('a');
@@ -604,7 +608,7 @@ export default function LongTextSplitter() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50">
       <Header currentLang={currentLang} onLanguageChange={handleLanguageChange} />
-      
+
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h1 className="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -615,27 +619,14 @@ export default function LongTextSplitter() {
           </p>
 
           <div className="space-y-6">
-            {/* Quota Info Display */}
-            {loadingQuota && !quotaInfo ? (
-              <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-6 rounded-xl border-2 border-blue-300">
-                <div className="flex items-center justify-center gap-3">
-                  <svg className="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <div>
-                    <div className="font-semibold text-blue-800">Đang kiểm tra quota của TẤT CẢ API keys...</div>
-                    <div className="text-sm text-blue-600">Đang sync với ElevenLabs API</div>
-                  </div>
-                </div>
-              </div>
-            ) : quotaInfo ? (
+            {/* Quota Info Display - only show when data loaded */}
+            {quotaInfo ? (
               <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-xl border-2 border-green-300">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
+                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
                     </svg>
                     Quota API (Đã kiểm tra TẤT CẢ keys)
                   </h3>
@@ -659,7 +650,7 @@ export default function LongTextSplitter() {
                     )}
                   </button>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="bg-white p-3 rounded-lg">
                     <div className="text-xs text-gray-600 mb-1">Max tokens/lần</div>
@@ -683,7 +674,7 @@ export default function LongTextSplitter() {
 
                 {quotaInfo.maxTokensPerRequest < 5000 && (
                   <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-3 text-sm text-yellow-800">
-                    ⚠️ <strong>Cảnh báo:</strong> Quota khả dụng thấp ({quotaInfo.maxTokensPerRequest.toLocaleString()} tokens). 
+                    ⚠️ <strong>Cảnh báo:</strong> Quota khả dụng thấp ({quotaInfo.maxTokensPerRequest.toLocaleString()} tokens).
                     Text sẽ được chia thành các đoạn nhỏ hơn để phù hợp.
                   </div>
                 )}
@@ -692,7 +683,7 @@ export default function LongTextSplitter() {
                 <details className="mt-4">
                   <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd"/>
+                      <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" />
                     </svg>
                     Chi tiết {quotaInfo.keys.length} API keys
                   </summary>
@@ -707,12 +698,11 @@ export default function LongTextSplitter() {
                           <span>{key.remainingTokens.toLocaleString()} / {key.totalTokens.toLocaleString()} tokens</span>
                         </div>
                         <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${
-                              parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' :
+                          <div
+                            className={`h-2 rounded-full ${parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' :
                               parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' :
-                              'bg-red-500'
-                            }`}
+                                'bg-red-500'
+                              }`}
                             style={{ width: `${key.percentageRemaining}%` }}
                           ></div>
                         </div>
@@ -767,7 +757,7 @@ export default function LongTextSplitter() {
             <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-6 rounded-xl">
               <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/>
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                 </svg>
                 Schnelleinstellungen
               </h3>
@@ -787,9 +777,8 @@ export default function LongTextSplitter() {
                       setStyle(0);
                       setUseSpeakerBoost(true);
                     }}
-                    className={`px-3 py-2 text-xs bg-white border rounded-lg hover:bg-gray-50 transition-colors relative ${
-                      isPresetActive(0.5, 0.75, 0, true) ? 'border-blue-500 border-2 ring-2 ring-blue-200' : 'border-gray-300'
-                    }`}
+                    className={`px-3 py-2 text-xs bg-white border rounded-lg hover:bg-gray-50 transition-colors relative ${isPresetActive(0.5, 0.75, 0, true) ? 'border-blue-500 border-2 ring-2 ring-blue-200' : 'border-gray-300'
+                      }`}
                   >
                     {isPresetActive(0.5, 0.75, 0, true) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -799,7 +788,7 @@ export default function LongTextSplitter() {
                     <div className="font-semibold">🎯 Standard</div>
                     <div className="text-[10px] text-gray-500 mt-0.5">Ausgewogen & neutral</div>
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={() => {
@@ -808,9 +797,8 @@ export default function LongTextSplitter() {
                       setStyle(0.5);
                       setUseSpeakerBoost(true);
                     }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-yellow-400 via-red-400 to-red-500 text-white font-bold rounded-lg hover:from-yellow-500 hover:to-red-600 transition-colors shadow-md relative ${
-                      isPresetActive(0.3, 0.85, 0.5, true) ? 'ring-4 ring-yellow-300' : ''
-                    }`}
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-yellow-400 via-red-400 to-red-500 text-white font-bold rounded-lg hover:from-yellow-500 hover:to-red-600 transition-colors shadow-md relative ${isPresetActive(0.3, 0.85, 0.5, true) ? 'ring-4 ring-yellow-300' : ''
+                      }`}
                   >
                     {isPresetActive(0.3, 0.85, 0.5, true) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -832,9 +820,8 @@ export default function LongTextSplitter() {
                       setStyle(0);
                       setUseSpeakerBoost(false);
                     }}
-                    className={`px-3 py-2 text-xs bg-white border rounded-lg hover:bg-gray-50 transition-colors relative ${
-                      isPresetActive(0.8, 0.5, 0, false) ? 'border-blue-500 border-2 ring-2 ring-blue-200' : 'border-gray-300'
-                    }`}
+                    className={`px-3 py-2 text-xs bg-white border rounded-lg hover:bg-gray-50 transition-colors relative ${isPresetActive(0.8, 0.5, 0, false) ? 'border-blue-500 border-2 ring-2 ring-blue-200' : 'border-gray-300'
+                      }`}
                   >
                     {isPresetActive(0.8, 0.5, 0, false) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -854,9 +841,8 @@ export default function LongTextSplitter() {
                       setStyle(0.65);
                       setUseSpeakerBoost(true);
                     }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md relative ${
-                      isPresetActive(0.15, 0.9, 0.65, true) ? 'ring-4 ring-purple-300' : ''
-                    }`}
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md relative ${isPresetActive(0.15, 0.9, 0.65, true) ? 'ring-4 ring-purple-300' : ''
+                      }`}
                   >
                     {isPresetActive(0.15, 0.9, 0.65, true) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -875,9 +861,8 @@ export default function LongTextSplitter() {
                       setStyle(0.8);
                       setUseSpeakerBoost(true);
                     }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-red-600 to-orange-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-orange-700 transition-colors shadow-md relative ${
-                      isPresetActive(0.2, 0.95, 0.8, true) ? 'ring-4 ring-red-300' : ''
-                    }`}
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-red-600 to-orange-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-orange-700 transition-colors shadow-md relative ${isPresetActive(0.2, 0.95, 0.8, true) ? 'ring-4 ring-red-300' : ''
+                      }`}
                   >
                     {isPresetActive(0.2, 0.95, 0.8, true) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -896,9 +881,8 @@ export default function LongTextSplitter() {
                       setStyle(0.6);
                       setUseSpeakerBoost(true);
                     }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-colors shadow-md relative ${
-                      isPresetActive(0.25, 0.88, 0.6, true) ? 'ring-4 ring-blue-300' : ''
-                    }`}
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-colors shadow-md relative ${isPresetActive(0.25, 0.88, 0.6, true) ? 'ring-4 ring-blue-300' : ''
+                      }`}
                   >
                     {isPresetActive(0.25, 0.88, 0.6, true) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -918,9 +902,8 @@ export default function LongTextSplitter() {
                       setStyle(0.75);
                       setUseSpeakerBoost(true);
                     }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors shadow-md relative ${
-                      isPresetActive(0.18, 0.92, 0.75, true) ? 'ring-4 ring-orange-300' : ''
-                    }`}
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors shadow-md relative ${isPresetActive(0.18, 0.92, 0.75, true) ? 'ring-4 ring-orange-300' : ''
+                      }`}
                   >
                     {isPresetActive(0.18, 0.92, 0.75, true) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -939,9 +922,8 @@ export default function LongTextSplitter() {
                       setStyle(0.85);
                       setUseSpeakerBoost(true);
                     }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-lg hover:from-indigo-700 hover:to-purple-800 transition-colors shadow-md relative ${
-                      isPresetActive(0.12, 0.95, 0.85, true) ? 'ring-4 ring-indigo-300' : ''
-                    }`}
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-lg hover:from-indigo-700 hover:to-purple-800 transition-colors shadow-md relative ${isPresetActive(0.12, 0.95, 0.85, true) ? 'ring-4 ring-indigo-300' : ''
+                      }`}
                   >
                     {isPresetActive(0.12, 0.95, 0.85, true) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -960,9 +942,8 @@ export default function LongTextSplitter() {
                       setStyle(0.55);
                       setUseSpeakerBoost(true);
                     }}
-                    className={`px-3 py-2 text-xs bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-colors shadow-md relative ${
-                      isPresetActive(0.22, 0.87, 0.55, true) ? 'ring-4 ring-green-300' : ''
-                    }`}
+                    className={`px-3 py-2 text-xs bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-colors shadow-md relative ${isPresetActive(0.22, 0.87, 0.55, true) ? 'ring-4 ring-green-300' : ''
+                      }`}
                   >
                     {isPresetActive(0.22, 0.87, 0.55, true) && (
                       <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -974,7 +955,7 @@ export default function LongTextSplitter() {
                   </button>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 {/* Stability */}
                 <div>
@@ -1060,14 +1041,12 @@ export default function LongTextSplitter() {
                   </div>
                   <button
                     onClick={() => setUseSpeakerBoost(!useSpeakerBoost)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      useSpeakerBoost ? 'bg-green-600' : 'bg-gray-300'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useSpeakerBoost ? 'bg-green-600' : 'bg-gray-300'
+                      }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        useSpeakerBoost ? 'translate-x-6' : 'translate-x-1'
-                      }`}
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useSpeakerBoost ? 'translate-x-6' : 'translate-x-1'
+                        }`}
                     />
                   </button>
                 </div>
@@ -1141,7 +1120,7 @@ export default function LongTextSplitter() {
                         ) : (
                           <>
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+                              <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
                             </svg>
                             🎵 Tạo Tất Cả Audio
                           </>
@@ -1166,7 +1145,7 @@ export default function LongTextSplitter() {
                           ) : (
                             <>
                               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                               </svg>
                               🎵 Ghép Tất Cả Audio
                             </>
@@ -1177,7 +1156,7 @@ export default function LongTextSplitter() {
                           className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
                         >
                           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
+                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                           </svg>
                           Download Riêng Lẻ
                         </button>
@@ -1251,11 +1230,11 @@ export default function LongTextSplitter() {
                               >
                                 {isPlaying ? (
                                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                                   </svg>
                                 ) : (
                                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"/>
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                                   </svg>
                                 )}
                               </button>
@@ -1273,7 +1252,7 @@ export default function LongTextSplitter() {
                               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
+                                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                               </svg>
                               Download
                             </button>
@@ -1294,6 +1273,15 @@ export default function LongTextSplitter() {
           </div>
         </div>
       </main>
+
+      {/* Floating Quota Loading Button */}
+      <QuotaLoadingButton
+        isLoading={loadingQuota}
+        isSuccess={quotaLoaded}
+        loadingText="Đang kiểm tra quota của TẤT CẢ API keys..."
+        successText="Đã kiểm tra xong quota!"
+        subText="Đang sync với ElevenLabs API"
+      />
     </div>
   );
 }

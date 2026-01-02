@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import QuotaLoadingButton from '@/components/QuotaLoadingButton';
 import { Language, getTranslation } from '@/lib/translations';
 
 interface Voice {
@@ -71,6 +72,7 @@ export default function Home() {
   // Quota states
   const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
   const [loadingQuota, setLoadingQuota] = useState(false);
+  const [quotaLoaded, setQuotaLoaded] = useState(false);
 
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
@@ -95,11 +97,13 @@ export default function Home() {
   // Fetch quota info
   const fetchQuotaInfo = async () => {
     setLoadingQuota(true);
+    setQuotaLoaded(false);
     try {
       const response = await fetch('/api/quota');
       const data = await response.json();
       if (data.success) {
         setQuotaInfo(data.data);
+        setQuotaLoaded(true);
       } else {
         setError(data.error || 'Không thể lấy thông tin quota');
       }
@@ -344,21 +348,8 @@ export default function Home() {
         <div className="bg-white rounded-lg shadow-xl p-8">
 
           <form onSubmit={handleSubmit}>
-            {/* Quota Info Display */}
-            {loadingQuota && !quotaInfo ? (
-              <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-6 rounded-xl border-2 border-blue-300 mb-6">
-                <div className="flex items-center justify-center gap-3">
-                  <svg className="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <div>
-                    <div className="font-semibold text-blue-800">{t.checkingQuota || 'Đang kiểm tra quota của TẤT CẢ API keys...'}</div>
-                    <div className="text-sm text-blue-600">{t.syncingApi || 'Đang sync với ElevenLabs API'}</div>
-                  </div>
-                </div>
-              </div>
-            ) : quotaInfo ? (
+            {/* Quota Info Display - only show when data loaded */}
+            {quotaInfo ? (
               <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-xl border-2 border-green-300 mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -438,8 +429,8 @@ export default function Home() {
                         <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full ${parseFloat(key.percentageRemaining) > 50 ? 'bg-green-500' :
-                                parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' :
-                                  'bg-red-500'
+                              parseFloat(key.percentageRemaining) > 20 ? 'bg-yellow-500' :
+                                'bg-red-500'
                               }`}
                             style={{ width: `${key.percentageRemaining}%` }}
                           ></div>
@@ -479,10 +470,10 @@ export default function Home() {
                 <div className="flex justify-between items-center mt-3">
                   <div className="flex items-center gap-2">
                     <p className={`text-sm font-semibold ${text.length < 100
-                        ? 'text-orange-600'
-                        : text.length > 10000
-                          ? 'text-red-600'
-                          : 'text-green-600'
+                      ? 'text-orange-600'
+                      : text.length > 10000
+                        ? 'text-red-600'
+                        : 'text-green-600'
                       }`}>
                       {text.length.toLocaleString()}
                     </p>
@@ -535,8 +526,8 @@ export default function Home() {
                     type="button"
                     onClick={() => setGenderFilter('all')}
                     className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${genderFilter === 'all'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                   >
                     {t.filterAll}
@@ -545,8 +536,8 @@ export default function Home() {
                     type="button"
                     onClick={() => setGenderFilter('male')}
                     className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${genderFilter === 'male'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                   >
                     {t.filterMale}
@@ -555,8 +546,8 @@ export default function Home() {
                     type="button"
                     onClick={() => setGenderFilter('female')}
                     className={`flex-1 px-2 py-1 text-[10px] font-semibold rounded transition-all ${genderFilter === 'female'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                   >
                     {t.filterFemale}
@@ -576,8 +567,8 @@ export default function Home() {
                             <div
                               key={voice.id}
                               className={`border rounded p-1.5 cursor-pointer transition-all bg-white ${selectedVoiceId === voice.id
-                                  ? 'border-blue-500 ring-1 ring-blue-200'
-                                  : 'border-gray-200 hover:border-blue-300'
+                                ? 'border-blue-500 ring-1 ring-blue-200'
+                                : 'border-gray-200 hover:border-blue-300'
                                 }`}
                               onClick={() => setSelectedVoiceId(voice.id)}
                             >
@@ -1098,6 +1089,15 @@ export default function Home() {
           </form>
         </div>
       </div>
+
+      {/* Floating Quota Loading Button */}
+      <QuotaLoadingButton
+        isLoading={loadingQuota}
+        isSuccess={quotaLoaded}
+        loadingText={t.checkingQuota || 'Đang kiểm tra quota của TẤT CẢ API keys...'}
+        successText={'Đã kiểm tra xong quota!'}
+        subText={t.syncingApi || 'Đang sync với ElevenLabs API'}
+      />
     </div>
   );
 }
