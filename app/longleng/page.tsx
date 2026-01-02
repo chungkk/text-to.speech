@@ -67,6 +67,12 @@ export default function LongTextSplitter() {
   const [isMerging, setIsMerging] = useState(false);
   const [mergeProgress, setMergeProgress] = useState(0);
 
+  // Summary popup and batch generation states
+  const [showSummaryPopup, setShowSummaryPopup] = useState(false);
+  const [selectedChunks, setSelectedChunks] = useState<Set<number>>(new Set());
+  const [parallelGenerating, setParallelGenerating] = useState(false);
+  const [generationQueue, setGenerationQueue] = useState<number[]>([]);
+
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
     return stability === presetStability &&
@@ -390,6 +396,98 @@ export default function LongTextSplitter() {
     } finally {
       setGeneratingAll(false);
     }
+  };
+
+  // Parallel generation - 2 at a time
+  const handleParallelGenerate = async (indexes: number[]) => {
+    if (indexes.length === 0) return;
+
+    setParallelGenerating(true);
+    setError('');
+
+    const queue = [...indexes];
+    const MAX_CONCURRENT = 2;
+    let activeCount = 0;
+    let completedCount = 0;
+
+    const processNext = async (): Promise<void> => {
+      while (queue.length > 0 && activeCount < MAX_CONCURRENT) {
+        const index = queue.shift();
+        if (index === undefined) break;
+
+        // Skip if already has audio
+        if (audioDataMap.has(index)) {
+          completedCount++;
+          continue;
+        }
+
+        activeCount++;
+
+        // Generate audio for this chunk
+        handleGenerateAudio(splitTexts[index], index).then(() => {
+          activeCount--;
+          completedCount++;
+
+          // Start next in queue
+          if (queue.length > 0) {
+            processNext();
+          } else if (activeCount === 0) {
+            // All done
+            setParallelGenerating(false);
+            setSelectedChunks(new Set());
+          }
+        }).catch(() => {
+          activeCount--;
+          completedCount++;
+
+          if (queue.length > 0) {
+            processNext();
+          } else if (activeCount === 0) {
+            setParallelGenerating(false);
+          }
+        });
+      }
+    };
+
+    // Start initial batch
+    await processNext();
+  };
+
+  // Generate selected chunks with parallel processing
+  const handleGenerateSelected = () => {
+    const indexes = Array.from(selectedChunks).sort((a, b) => a - b);
+    handleParallelGenerate(indexes);
+  };
+
+  // Generate all remaining chunks with parallel processing
+  const handleGenerateAllParallel = () => {
+    const indexes = splitTexts
+      .map((_, index) => index)
+      .filter(index => !audioDataMap.has(index));
+    handleParallelGenerate(indexes);
+  };
+
+  // Toggle chunk selection
+  const toggleChunkSelection = (index: number) => {
+    setSelectedChunks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all chunks
+  const selectAllChunks = () => {
+    setSelectedChunks(new Set(splitTexts.map((_, i) => i)));
+  };
+
+  // Deselect all chunks
+  const deselectAllChunks = () => {
+    setSelectedChunks(new Set());
   };
 
   const handlePlayAudio = (index: number) => {
@@ -1092,24 +1190,91 @@ export default function LongTextSplitter() {
 
             {splitTexts.length > 0 && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center p-4 bg-purple-50 rounded-xl">
-                  <div className="text-lg font-semibold text-purple-900">
-                    Đã chia thành {splitTexts.length} đoạn
-                    {audioDataMap.size > 0 && (
-                      <span className="text-sm text-green-600 ml-2">
-                        ({audioDataMap.size}/{splitTexts.length} audio)
+                <div className="flex flex-col gap-4 p-4 bg-purple-50 rounded-xl">
+                  {/* Header row */}
+                  <div className="flex justify-between items-center flex-wrap gap-3">
+                    <div className="text-lg font-semibold text-purple-900">
+                      Đã chia thành {splitTexts.length} đoạn
+                      {audioDataMap.size > 0 && (
+                        <span className="text-sm text-green-600 ml-2">
+                          ({audioDataMap.size}/{splitTexts.length} audio)
+                        </span>
+                      )}
+                      {generatingIndexes.size > 0 && (
+                        <span className="text-sm text-blue-600 ml-2 animate-pulse">
+                          🔄 Đang tạo {generatingIndexes.size} đoạn...
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Summary Popup Button */}
+                    <button
+                      onClick={() => setShowSummaryPopup(true)}
+                      className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-colors flex items-center gap-2 font-semibold shadow-lg"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                        <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                      </svg>
+                      📋 Bảng Tổng Hợp
+                    </button>
+                  </div>
+
+                  {/* Selection controls */}
+                  <div className="flex flex-wrap gap-2 items-center border-t border-purple-200 pt-4">
+                    <span className="text-sm font-medium text-gray-700">Chọn đoạn:</span>
+                    <button
+                      onClick={selectAllChunks}
+                      className="text-sm bg-white border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      ✅ Chọn tất cả
+                    </button>
+                    <button
+                      onClick={deselectAllChunks}
+                      className="text-sm bg-white border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      ❌ Bỏ chọn
+                    </button>
+                    {selectedChunks.size > 0 && (
+                      <span className="text-sm text-purple-600 font-medium">
+                        Đã chọn: {selectedChunks.size} đoạn
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-3 flex-wrap">
-                    {/* Generate All Button */}
+
+                  {/* Action buttons */}
+                  <div className="flex gap-3 flex-wrap border-t border-purple-200 pt-4">
+                    {/* Generate Selected Button */}
+                    {selectedChunks.size > 0 && (
+                      <button
+                        onClick={handleGenerateSelected}
+                        disabled={parallelGenerating || generatingIndexes.size > 0}
+                        className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-2 rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+                      >
+                        {parallelGenerating ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Đang tạo...
+                          </>
+                        ) : (
+                          <>
+                            🎯 Tạo {selectedChunks.size} đoạn đã chọn (2 song song)
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Generate All with Parallel Button */}
                     {audioDataMap.size < splitTexts.length && (
                       <button
-                        onClick={handleGenerateAllAudios}
-                        disabled={generatingAll || generatingIndexes.size > 0}
+                        onClick={handleGenerateAllParallel}
+                        disabled={parallelGenerating || generatingIndexes.size > 0}
                         className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
                       >
-                        {generatingAll || generatingIndexes.size > 0 ? (
+                        {parallelGenerating || generatingIndexes.size > 0 ? (
                           <>
                             <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1122,11 +1287,12 @@ export default function LongTextSplitter() {
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
                             </svg>
-                            🎵 Tạo Tất Cả Audio
+                            🎵 Tạo Tất Cả (2 song song)
                           </>
                         )}
                       </button>
                     )}
+
                     {audioDataMap.size > 0 && (
                       <>
                         <button
@@ -1175,16 +1341,34 @@ export default function LongTextSplitter() {
                   const audioData = audioDataMap.get(index);
                   const isGenerating = generatingIndexes.has(index);
                   const isPlaying = playingIndex === index;
+                  const isSelected = selectedChunks.has(index);
 
                   return (
-                    <div key={index} className="border-2 border-purple-200 rounded-xl p-6 space-y-4">
+                    <div
+                      key={index}
+                      className={`border-2 rounded-xl p-6 space-y-4 transition-all ${isSelected
+                        ? 'border-cyan-400 bg-cyan-50/30 shadow-lg shadow-cyan-100'
+                        : 'border-purple-200'
+                        }`}
+                    >
                       <div className="flex justify-between items-center flex-wrap gap-3">
-                        <div>
-                          <h3 className="text-xl font-semibold text-purple-900">
-                            Đoạn {index + 1}
-                          </h3>
-                          <div className="text-xs text-gray-500 mt-1">
-                            API: {textChunk.suggestedApiKey} ({textChunk.maxTokens.toLocaleString()} tokens)
+                        <div className="flex items-center gap-3">
+                          {/* Checkbox for selection */}
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleChunkSelection(index)}
+                            className="w-5 h-5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                          />
+                          <div>
+                            <h3 className="text-xl font-semibold text-purple-900">
+                              Đoạn {index + 1}
+                              {audioData && <span className="ml-2 text-green-500">✓</span>}
+                              {isGenerating && <span className="ml-2 text-blue-500 animate-pulse">⏳</span>}
+                            </h3>
+                            <div className="text-xs text-gray-500 mt-1">
+                              API: {textChunk.suggestedApiKey} ({textChunk.maxTokens.toLocaleString()} tokens)
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -1273,6 +1457,213 @@ export default function LongTextSplitter() {
           </div>
         </div>
       </main>
+
+      {/* Summary Popup Modal */}
+      {showSummaryPopup && splitTexts.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">📋 Bảng Tổng Hợp</h2>
+                  <p className="text-indigo-100 mt-1">
+                    {splitTexts.length} đoạn • {audioDataMap.size} audio đã tạo
+                    {generatingIndexes.size > 0 && (
+                      <span className="ml-2 animate-pulse">• Đang tạo {generatingIndexes.size} đoạn...</span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSummaryPopup(false)}
+                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
+                >
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                <button
+                  onClick={() => {
+                    handleGenerateAllParallel();
+                  }}
+                  disabled={parallelGenerating || generatingIndexes.size > 0 || audioDataMap.size === splitTexts.length}
+                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {parallelGenerating || generatingIndexes.size > 0 ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang tạo...
+                    </>
+                  ) : (
+                    <>🎵 Tạo Tất Cả (2 song song)</>
+                  )}
+                </button>
+                {audioDataMap.size > 0 && (
+                  <button
+                    onClick={handleDownloadAllAudios}
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    📥 Tải Tất Cả ({audioDataMap.size} file)
+                  </button>
+                )}
+                {audioDataMap.size === splitTexts.length && (
+                  <button
+                    onClick={handleMergeAllAudios}
+                    disabled={isMerging}
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isMerging ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang ghép {mergeProgress.toFixed(0)}%
+                      </>
+                    ) : (
+                      <>🔗 Ghép & Tải Audio</>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Table content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="grid gap-2">
+                {splitTexts.map((textChunk, index) => {
+                  const audioData = audioDataMap.get(index);
+                  const isGenerating = generatingIndexes.has(index);
+                  const isSelected = selectedChunks.has(index);
+
+                  return (
+                    <div
+                      key={index}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${isSelected
+                          ? 'border-cyan-400 bg-cyan-50'
+                          : audioData
+                            ? 'border-green-200 bg-green-50'
+                            : isGenerating
+                              ? 'border-blue-200 bg-blue-50'
+                              : 'border-gray-200 bg-white hover:bg-gray-50'
+                        }`}
+                    >
+                      {/* Checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleChunkSelection(index)}
+                        className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                      />
+
+                      {/* Index */}
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-sm">
+                        {index + 1}
+                      </div>
+
+                      {/* Status icon */}
+                      <div className="w-6">
+                        {audioData ? (
+                          <span className="text-green-500 text-lg">✓</span>
+                        ) : isGenerating ? (
+                          <span className="text-blue-500 animate-pulse">⏳</span>
+                        ) : (
+                          <span className="text-gray-300">○</span>
+                        )}
+                      </div>
+
+                      {/* Text preview */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-gray-700 truncate" title={textChunk.chunk}>
+                          {textChunk.chunk.slice(0, 80)}...
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {textChunk.chunk.length.toLocaleString()} ký tự • {textChunk.suggestedApiKey}
+                          {audioData && (
+                            <span className="text-green-600 ml-2">
+                              • {formatTime(audioData.duration)} • {formatFileSize(audioData.size)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        {!audioData && !isGenerating && (
+                          <button
+                            onClick={() => handleGenerateAudio(textChunk, index)}
+                            disabled={parallelGenerating && !generatingIndexes.has(index)}
+                            className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+                          >
+                            Tạo
+                          </button>
+                        )}
+                        {isGenerating && (
+                          <div className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
+                            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Đang tạo
+                          </div>
+                        )}
+                        {audioData && (
+                          <button
+                            onClick={() => handleDownloadAudio(index)}
+                            className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-green-600 transition-colors flex items-center gap-1"
+                          >
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                            Tải
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t bg-gray-50 p-4 flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                {selectedChunks.size > 0 && (
+                  <span className="font-medium text-cyan-600">
+                    Đã chọn {selectedChunks.size} đoạn
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {selectedChunks.size > 0 && (
+                  <button
+                    onClick={() => {
+                      handleGenerateSelected();
+                    }}
+                    disabled={parallelGenerating || generatingIndexes.size > 0}
+                    className="bg-cyan-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-cyan-600 transition-colors disabled:opacity-50"
+                  >
+                    🎯 Tạo {selectedChunks.size} đoạn đã chọn
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowSummaryPopup(false)}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Quota Loading Button */}
       <QuotaLoadingButton
