@@ -117,38 +117,74 @@ export default function LongTextSplitter() {
       const chunkLength = currentChunk.chunk.length;
       const currentApiName = currentChunk.suggestedApiKey;
 
+      // Get list of API keys already assigned to OTHER chunks that haven't been generated yet
+      const usedApiKeys = new Set<string>();
+      splitTexts.forEach((chunk, i) => {
+        // Skip current chunk and chunks that already have audio
+        if (i !== index && !audioDataMap.has(i)) {
+          usedApiKeys.add(chunk.suggestedApiKey);
+        }
+      });
+
+      console.log(`📋 API keys đang dùng bởi các đoạn chưa tạo khác: ${Array.from(usedApiKeys).join(', ')}`);
+
       // Find a suitable API key that:
       // 1. Is different from the current one
       // 2. Has enough tokens for this chunk
+      // 3. Is NOT already assigned to another chunk that hasn't been generated yet
       // Sort by remaining tokens (prefer keys with more quota)
       const sortedKeys = [...freshQuotaInfo.keys].sort((a, b) => b.remainingTokens - a.remainingTokens);
 
       const suitableKey = sortedKeys.find(key =>
         key.name !== currentApiName &&
-        key.remainingTokens >= chunkLength + 50
+        key.remainingTokens >= chunkLength + 50 &&
+        !usedApiKeys.has(key.name)
       );
 
       if (!suitableKey) {
-        // If no different key found, try to find ANY key with enough quota (including current one if it now has quota)
-        const anyKey = sortedKeys.find(key => key.remainingTokens >= chunkLength + 50);
+        // If no different & unused key found, try to find ANY key with enough quota that's not used by others
+        const anyUnusedKey = sortedKeys.find(key => 
+          key.remainingTokens >= chunkLength + 50 &&
+          !usedApiKeys.has(key.name)
+        );
 
-        if (!anyKey) {
-          setError(`Không tìm được API key nào có đủ quota cho đoạn ${index + 1} (${chunkLength} ký tự)`);
-          return;
+        if (anyUnusedKey) {
+          // Use this key even if it's the same as current (if it's the only one available and not used by others)
+          setSplitTexts(prev => {
+            const newTexts = [...prev];
+            newTexts[index] = {
+              ...newTexts[index],
+              suggestedApiKey: anyUnusedKey.name,
+              maxTokens: anyUnusedKey.remainingTokens
+            };
+            return newTexts;
+          });
+
+          console.log(`🔄 Updated API for chunk ${index + 1}: ${currentApiName} → ${anyUnusedKey.name} (only available unused key)`);
+        } else {
+          // Last resort: find any key with enough quota (may overlap with other chunks)
+          const anyKey = sortedKeys.find(key => key.remainingTokens >= chunkLength + 50);
+
+          if (!anyKey) {
+            setError(`Không tìm được API key nào có đủ quota cho đoạn ${index + 1} (${chunkLength} ký tự)`);
+            return;
+          }
+
+          // Warn user about overlap
+          setError(`⚠️ Đoạn ${index + 1}: Tất cả API keys khả dụng đều đang được gán cho đoạn khác. Đã chọn ${anyKey.name} (có thể trùng).`);
+
+          setSplitTexts(prev => {
+            const newTexts = [...prev];
+            newTexts[index] = {
+              ...newTexts[index],
+              suggestedApiKey: anyKey.name,
+              maxTokens: anyKey.remainingTokens
+            };
+            return newTexts;
+          });
+
+          console.log(`🔄 Updated API for chunk ${index + 1}: ${currentApiName} → ${anyKey.name} (WARNING: may overlap with other chunks)`);
         }
-
-        // Use the same key if it's the only one with enough quota
-        setSplitTexts(prev => {
-          const newTexts = [...prev];
-          newTexts[index] = {
-            ...newTexts[index],
-            suggestedApiKey: anyKey.name,
-            maxTokens: anyKey.remainingTokens
-          };
-          return newTexts;
-        });
-
-        console.log(`🔄 Updated API for chunk ${index + 1}: ${currentApiName} → ${anyKey.name} (same or only available)`);
       } else {
         // Update the chunk with new API key
         setSplitTexts(prev => {
@@ -164,12 +200,14 @@ export default function LongTextSplitter() {
         console.log(`🔄 Changed API for chunk ${index + 1}: ${currentApiName} → ${suitableKey.name}`);
       }
 
-      // Clear error for this chunk
-      setChunkErrors(prev => {
-        const newErrors = new Map(prev);
-        newErrors.delete(index);
-        return newErrors;
-      });
+      // Clear error for this chunk (unless we set a warning above)
+      if (!error.includes('⚠️')) {
+        setChunkErrors(prev => {
+          const newErrors = new Map(prev);
+          newErrors.delete(index);
+          return newErrors;
+        });
+      }
 
     } catch (err) {
       console.error('Error refreshing quota:', err);
