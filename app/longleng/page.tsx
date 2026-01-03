@@ -55,6 +55,7 @@ export default function LongTextSplitter() {
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [error, setError] = useState('');
+  const [chunkErrors, setChunkErrors] = useState<Map<number, string>>(new Map());
   const [generatingAll, setGeneratingAll] = useState(false);
 
   // Voice Settings
@@ -78,6 +79,53 @@ export default function LongTextSplitter() {
     if (generatingIndexes.size === 0) return '';
     const indexes = Array.from(generatingIndexes).sort((a, b) => a - b);
     return indexes.map(i => i + 1).join(', ');
+  };
+
+  // Function to find a new API key for a chunk that failed
+  const handleFindNewApiKey = async (index: number) => {
+    if (!quotaInfo || quotaInfo.keys.length === 0) {
+      setError('Không có API keys khả dụng');
+      return;
+    }
+
+    const currentChunk = splitTexts[index];
+    if (!currentChunk) return;
+
+    const chunkLength = currentChunk.chunk.length;
+    const currentApiName = currentChunk.suggestedApiKey;
+
+    // Find a suitable API key that:
+    // 1. Is different from the current one
+    // 2. Has enough tokens for this chunk
+    const suitableKey = quotaInfo.keys.find(key =>
+      key.name !== currentApiName &&
+      key.remainingTokens >= chunkLength + 50
+    );
+
+    if (!suitableKey) {
+      setError(`Không tìm được API key mới phù hợp cho đoạn ${index + 1} (${chunkLength} ký tự)`);
+      return;
+    }
+
+    // Update the chunk with new API key
+    setSplitTexts(prev => {
+      const newTexts = [...prev];
+      newTexts[index] = {
+        ...newTexts[index],
+        suggestedApiKey: suitableKey.name,
+        maxTokens: suitableKey.remainingTokens
+      };
+      return newTexts;
+    });
+
+    // Clear error for this chunk
+    setChunkErrors(prev => {
+      const newErrors = new Map(prev);
+      newErrors.delete(index);
+      return newErrors;
+    });
+
+    console.log(`🔄 Changed API for chunk ${index + 1}: ${currentApiName} → ${suitableKey.name}`);
   };
 
   // Helper function to check if current settings match a preset
@@ -367,9 +415,17 @@ export default function LongTextSplitter() {
       };
 
       setAudioDataMap(prev => new Map(prev).set(index, audioData));
+      // Clear error for this chunk on success
+      setChunkErrors(prev => {
+        const newErrors = new Map(prev);
+        newErrors.delete(index);
+        return newErrors;
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Lỗi khi tạo audio';
       setError(`Đoạn ${index + 1}: ${errorMessage}`);
+      // Track error for this specific chunk
+      setChunkErrors(prev => new Map(prev).set(index, errorMessage));
       console.error('Audio generation error:', err);
     } finally {
       setGeneratingIndexes(prev => {
@@ -1363,6 +1419,7 @@ export default function LongTextSplitter() {
                   const isGenerating = generatingIndexes.has(index);
                   const isPlaying = playingIndex === index;
                   const isSelected = selectedChunks.has(index);
+                  const chunkError = chunkErrors.get(index);
 
                   return (
                     <div
@@ -1386,10 +1443,30 @@ export default function LongTextSplitter() {
                               Đoạn {index + 1}
                               {audioData && <span className="ml-2 text-green-500">✓</span>}
                               {isGenerating && <span className="ml-2 text-blue-500 animate-pulse">⏳</span>}
+                              {chunkError && !audioData && <span className="ml-2 text-red-500">❌</span>}
                             </h3>
-                            <div className="text-xs text-gray-500 mt-1">
-                              API: {textChunk.suggestedApiKey} ({textChunk.maxTokens.toLocaleString()} tokens)
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-xs ${chunkError ? 'text-red-500' : 'text-gray-500'}`}>
+                                API: {textChunk.suggestedApiKey} ({textChunk.maxTokens.toLocaleString()} tokens)
+                              </span>
+                              {/* Reload button to find new API key */}
+                              {(chunkError || !audioData) && !isGenerating && (
+                                <button
+                                  onClick={() => handleFindNewApiKey(index)}
+                                  title="Tìm API key khác"
+                                  className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 p-1 rounded transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
+                            {chunkError && !audioData && (
+                              <div className="text-xs text-red-500 mt-1">
+                                ⚠️ {chunkError}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -1563,6 +1640,7 @@ export default function LongTextSplitter() {
                   const audioData = audioDataMap.get(index);
                   const isGenerating = generatingIndexes.has(index);
                   const isSelected = selectedChunks.has(index);
+                  const chunkError = chunkErrors.get(index);
 
                   return (
                     <div
@@ -1595,6 +1673,8 @@ export default function LongTextSplitter() {
                           <span className="text-green-500 text-lg">✓</span>
                         ) : isGenerating ? (
                           <span className="text-blue-500 animate-pulse">⏳</span>
+                        ) : chunkError ? (
+                          <span className="text-red-500 text-lg">❌</span>
                         ) : (
                           <span className="text-gray-300">○</span>
                         )}
@@ -1605,14 +1685,33 @@ export default function LongTextSplitter() {
                         <div className="text-sm text-gray-700 truncate" title={textChunk.chunk}>
                           {textChunk.chunk.slice(0, 80)}...
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {textChunk.chunk.length.toLocaleString()} ký tự • {textChunk.suggestedApiKey}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`text-xs ${chunkError ? 'text-red-500' : 'text-gray-500'}`}>
+                            {textChunk.chunk.length.toLocaleString()} ký tự • {textChunk.suggestedApiKey}
+                          </span>
+                          {/* Reload button to find new API key */}
+                          {(chunkError || !audioData) && !isGenerating && (
+                            <button
+                              onClick={() => handleFindNewApiKey(index)}
+                              title="Tìm API key khác"
+                              className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 p-0.5 rounded transition-colors"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            </button>
+                          )}
                           {audioData && (
-                            <span className="text-green-600 ml-2">
+                            <span className="text-green-600">
                               • {formatTime(audioData.duration)} • {formatFileSize(audioData.size)}
                             </span>
                           )}
                         </div>
+                        {chunkError && !audioData && (
+                          <div className="text-xs text-red-500 mt-0.5 truncate" title={chunkError}>
+                            ⚠️ {chunkError}
+                          </div>
+                        )}
                       </div>
 
                       {/* Actions */}
