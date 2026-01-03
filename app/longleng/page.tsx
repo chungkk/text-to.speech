@@ -1547,12 +1547,12 @@ export default function LongTextSplitter() {
                     <div
                       key={index}
                       className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${isSelected
-                          ? 'border-cyan-400 bg-cyan-50'
-                          : audioData
-                            ? 'border-green-200 bg-green-50'
-                            : isGenerating
-                              ? 'border-blue-200 bg-blue-50'
-                              : 'border-gray-200 bg-white hover:bg-gray-50'
+                        ? 'border-cyan-400 bg-cyan-50'
+                        : audioData
+                          ? 'border-green-200 bg-green-50'
+                          : isGenerating
+                            ? 'border-blue-200 bg-blue-50'
+                            : 'border-gray-200 bg-white hover:bg-gray-50'
                         }`}
                     >
                       {/* Checkbox */}
@@ -1663,6 +1663,26 @@ export default function LongTextSplitter() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Summary Button - Always visible when splitTexts available */}
+      {splitTexts.length > 0 && (
+        <button
+          onClick={() => setShowSummaryPopup(true)}
+          className="fixed bottom-24 right-6 z-40 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-5 py-3 rounded-full hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 flex items-center gap-2 font-semibold shadow-2xl hover:scale-105 hover:shadow-purple-500/30"
+          style={{
+            boxShadow: '0 10px 40px rgba(99, 102, 241, 0.4)',
+          }}
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+            <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+          </svg>
+          📋 Bảng Tổng Hợp
+          <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
+            {audioDataMap.size}/{splitTexts.length}
+          </span>
+        </button>
       )}
 
       {/* Floating Quota Loading Button */}
