@@ -81,51 +81,102 @@ export default function LongTextSplitter() {
     return indexes.map(i => i + 1).join(', ');
   };
 
+  // State for tracking which chunk is refreshing API
+  const [refreshingApiIndex, setRefreshingApiIndex] = useState<number | null>(null);
+
   // Function to find a new API key for a chunk that failed
   const handleFindNewApiKey = async (index: number) => {
-    if (!quotaInfo || quotaInfo.keys.length === 0) {
-      setError('Không có API keys khả dụng');
-      return;
-    }
-
     const currentChunk = splitTexts[index];
     if (!currentChunk) return;
 
-    const chunkLength = currentChunk.chunk.length;
-    const currentApiName = currentChunk.suggestedApiKey;
+    setRefreshingApiIndex(index);
+    setError('');
 
-    // Find a suitable API key that:
-    // 1. Is different from the current one
-    // 2. Has enough tokens for this chunk
-    const suitableKey = quotaInfo.keys.find(key =>
-      key.name !== currentApiName &&
-      key.remainingTokens >= chunkLength + 50
-    );
+    try {
+      // First, refresh quota info from server to get latest data
+      console.log(`🔄 Refreshing quota for chunk ${index + 1}...`);
+      const response = await fetch('/api/quota');
+      const data = await response.json();
 
-    if (!suitableKey) {
-      setError(`Không tìm được API key mới phù hợp cho đoạn ${index + 1} (${chunkLength} ký tự)`);
-      return;
+      if (!data.success) {
+        setError(data.error || 'Không thể lấy thông tin quota');
+        return;
+      }
+
+      const freshQuotaInfo = data.data as QuotaInfo;
+
+      // Update the quota state with fresh data
+      setQuotaInfo(freshQuotaInfo);
+      setQuotaLoaded(true);
+
+      if (!freshQuotaInfo || freshQuotaInfo.keys.length === 0) {
+        setError('Không có API keys khả dụng');
+        return;
+      }
+
+      const chunkLength = currentChunk.chunk.length;
+      const currentApiName = currentChunk.suggestedApiKey;
+
+      // Find a suitable API key that:
+      // 1. Is different from the current one
+      // 2. Has enough tokens for this chunk
+      // Sort by remaining tokens (prefer keys with more quota)
+      const sortedKeys = [...freshQuotaInfo.keys].sort((a, b) => b.remainingTokens - a.remainingTokens);
+
+      const suitableKey = sortedKeys.find(key =>
+        key.name !== currentApiName &&
+        key.remainingTokens >= chunkLength + 50
+      );
+
+      if (!suitableKey) {
+        // If no different key found, try to find ANY key with enough quota (including current one if it now has quota)
+        const anyKey = sortedKeys.find(key => key.remainingTokens >= chunkLength + 50);
+
+        if (!anyKey) {
+          setError(`Không tìm được API key nào có đủ quota cho đoạn ${index + 1} (${chunkLength} ký tự)`);
+          return;
+        }
+
+        // Use the same key if it's the only one with enough quota
+        setSplitTexts(prev => {
+          const newTexts = [...prev];
+          newTexts[index] = {
+            ...newTexts[index],
+            suggestedApiKey: anyKey.name,
+            maxTokens: anyKey.remainingTokens
+          };
+          return newTexts;
+        });
+
+        console.log(`🔄 Updated API for chunk ${index + 1}: ${currentApiName} → ${anyKey.name} (same or only available)`);
+      } else {
+        // Update the chunk with new API key
+        setSplitTexts(prev => {
+          const newTexts = [...prev];
+          newTexts[index] = {
+            ...newTexts[index],
+            suggestedApiKey: suitableKey.name,
+            maxTokens: suitableKey.remainingTokens
+          };
+          return newTexts;
+        });
+
+        console.log(`🔄 Changed API for chunk ${index + 1}: ${currentApiName} → ${suitableKey.name}`);
+      }
+
+      // Clear error for this chunk
+      setChunkErrors(prev => {
+        const newErrors = new Map(prev);
+        newErrors.delete(index);
+        return newErrors;
+      });
+
+    } catch (err) {
+      console.error('Error refreshing quota:', err);
+      setError('Lỗi khi refresh quota');
+    } finally {
+      setRefreshingApiIndex(null);
     }
-
-    // Update the chunk with new API key
-    setSplitTexts(prev => {
-      const newTexts = [...prev];
-      newTexts[index] = {
-        ...newTexts[index],
-        suggestedApiKey: suitableKey.name,
-        maxTokens: suitableKey.remainingTokens
-      };
-      return newTexts;
-    });
-
-    // Clear error for this chunk
-    setChunkErrors(prev => {
-      const newErrors = new Map(prev);
-      newErrors.delete(index);
-      return newErrors;
-    });
-
-    console.log(`🔄 Changed API for chunk ${index + 1}: ${currentApiName} → ${suitableKey.name}`);
   };
 
   // Helper function to check if current settings match a preset
@@ -1453,12 +1504,20 @@ export default function LongTextSplitter() {
                               {(chunkError || !audioData) && !isGenerating && (
                                 <button
                                   onClick={() => handleFindNewApiKey(index)}
-                                  title="Tìm API key khác"
-                                  className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 p-1 rounded transition-colors"
+                                  disabled={refreshingApiIndex === index}
+                                  title="Refresh quota & tìm API key khác"
+                                  className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 p-1 rounded transition-colors disabled:opacity-50"
                                 >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                  </svg>
+                                  {refreshingApiIndex === index ? (
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                  )}
                                 </button>
                               )}
                             </div>
@@ -1693,12 +1752,20 @@ export default function LongTextSplitter() {
                           {(chunkError || !audioData) && !isGenerating && (
                             <button
                               onClick={() => handleFindNewApiKey(index)}
-                              title="Tìm API key khác"
-                              className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 p-0.5 rounded transition-colors"
+                              disabled={refreshingApiIndex === index}
+                              title="Refresh quota & tìm API key khác"
+                              className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 p-0.5 rounded transition-colors disabled:opacity-50"
                             >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
+                              {refreshingApiIndex === index ? (
+                                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                              ) : (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              )}
                             </button>
                           )}
                           {audioData && (
