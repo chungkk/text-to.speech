@@ -73,6 +73,13 @@ export default function LongTextSplitter() {
   const [parallelGenerating, setParallelGenerating] = useState(false);
   const [generationQueue, setGenerationQueue] = useState<number[]>([]);
 
+  // Helper function to format generating indexes as readable list
+  const formatGeneratingIndexes = (): string => {
+    if (generatingIndexes.size === 0) return '';
+    const indexes = Array.from(generatingIndexes).sort((a, b) => a - b);
+    return indexes.map(i => i + 1).join(', ');
+  };
+
   // Helper function to check if current settings match a preset
   const isPresetActive = (presetStability: number, presetSimilarity: number, presetStyle: number, presetBoost: boolean) => {
     return stability === presetStability &&
@@ -1216,7 +1223,7 @@ export default function LongTextSplitter() {
                       )}
                       {generatingIndexes.size > 0 && (
                         <span className="text-sm text-blue-600 ml-2 animate-pulse">
-                          🔄 Đang tạo {generatingIndexes.size} đoạn...
+                          🔄 Đang tạo đoạn {formatGeneratingIndexes()}...
                         </span>
                       )}
                     </div>
@@ -1294,7 +1301,7 @@ export default function LongTextSplitter() {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Đang tạo {generatingIndexes.size} audio...
+                            Đang tạo đoạn {formatGeneratingIndexes()}...
                           </>
                         ) : (
                           <>
@@ -1484,7 +1491,7 @@ export default function LongTextSplitter() {
                   <p className="text-indigo-100 mt-1">
                     {splitTexts.length} đoạn • {audioDataMap.size} audio đã tạo
                     {generatingIndexes.size > 0 && (
-                      <span className="ml-2 animate-pulse">• Đang tạo {generatingIndexes.size} đoạn...</span>
+                      <span className="ml-2 animate-pulse">• Đang tạo đoạn {formatGeneratingIndexes()}...</span>
                     )}
                   </p>
                 </div>
