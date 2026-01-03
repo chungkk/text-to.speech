@@ -550,59 +550,176 @@ export default function LongTextSplitter() {
     }
   };
 
-  // Parallel generation - 2 at a time
+  // Sequential generation with auto-retry on API failure
   const handleParallelGenerate = async (indexes: number[]) => {
     if (indexes.length === 0) return;
 
     setParallelGenerating(true);
     setError('');
 
-    const queue = [...indexes];
-    const MAX_CONCURRENT = 2;
-    let activeCount = 0;
-    let completedCount = 0;
-
-    const processNext = async (): Promise<void> => {
-      while (queue.length > 0 && activeCount < MAX_CONCURRENT) {
-        const index = queue.shift();
-        if (index === undefined) break;
-
-        // Skip if already has audio
-        if (audioDataMap.has(index)) {
-          completedCount++;
-          continue;
-        }
-
-        activeCount++;
-
-        // Generate audio for this chunk
-        handleGenerateAudio(splitTexts[index], index).then(() => {
-          activeCount--;
-          completedCount++;
-
-          // Start next in queue
-          if (queue.length > 0) {
-            processNext();
-          } else if (activeCount === 0) {
-            // All done
-            setParallelGenerating(false);
-            setSelectedChunks(new Set());
-          }
-        }).catch(() => {
-          activeCount--;
-          completedCount++;
-
-          if (queue.length > 0) {
-            processNext();
-          } else if (activeCount === 0) {
-            setParallelGenerating(false);
-          }
-        });
+    // Process sequentially - one at a time
+    for (const index of indexes) {
+      // Skip if already has audio
+      if (audioDataMap.has(index)) {
+        continue;
       }
-    };
 
-    // Start initial batch
-    await processNext();
+      let success = false;
+      let attempts = 0;
+      const maxAttempts = 10; // Maximum retry attempts
+
+      while (!success && attempts < maxAttempts) {
+        attempts++;
+        
+        try {
+          // Get current chunk (may have updated API key)
+          const currentChunk = splitTexts[index];
+          if (!currentChunk) break;
+
+          console.log(`🎵 Attempt ${attempts}: Generating chunk ${index + 1} with API: ${currentChunk.suggestedApiKey}`);
+          
+          setGeneratingIndexes(prev => new Set(prev).add(index));
+
+          const response = await fetch('/api/tts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: currentChunk.chunk,
+              voiceId: selectedVoiceId,
+              voiceSettings: {
+                stability,
+                similarity_boost: similarityBoost,
+                style,
+                use_speaker_boost: useSpeakerBoost,
+              }
+            }),
+          });
+
+          if (!response.ok) {
+            let errorMessage = `Lỗi HTTP ${response.status}`;
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorMessage;
+            } catch {
+              // Server trả về HTML error page thay vì JSON
+            }
+            throw new Error(errorMessage);
+          }
+
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+
+          const audio = new Audio(url);
+          await new Promise((resolve) => {
+            audio.onloadedmetadata = resolve;
+          });
+
+          const audioData: AudioData = {
+            blob,
+            url,
+            duration: audio.duration,
+            size: blob.size,
+          };
+
+          setAudioDataMap(prev => new Map(prev).set(index, audioData));
+          // Clear error for this chunk on success
+          setChunkErrors(prev => {
+            const newErrors = new Map(prev);
+            newErrors.delete(index);
+            return newErrors;
+          });
+          
+          success = true;
+          console.log(`✅ Chunk ${index + 1} generated successfully!`);
+
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Lỗi khi tạo audio';
+          console.error(`❌ Attempt ${attempts} failed for chunk ${index + 1}:`, errorMessage);
+          
+          // Track error for this specific chunk
+          setChunkErrors(prev => new Map(prev).set(index, errorMessage));
+          setError(`Đoạn ${index + 1}: ${errorMessage} - Đang thử API khác...`);
+
+          // Try to find a new API key
+          if (attempts < maxAttempts) {
+            console.log(`🔄 Finding new API key for chunk ${index + 1}...`);
+            
+            try {
+              // Refresh quota info
+              const quotaResponse = await fetch('/api/quota');
+              const quotaData = await quotaResponse.json();
+
+              if (quotaData.success) {
+                const freshQuotaInfo = quotaData.data as QuotaInfo;
+                setQuotaInfo(freshQuotaInfo);
+
+                const currentChunk = splitTexts[index];
+                const chunkLength = currentChunk.chunk.length;
+                const currentApiName = currentChunk.suggestedApiKey;
+
+                // Get list of API keys already assigned to OTHER chunks that haven't been generated yet
+                const usedApiKeys = new Set<string>();
+                splitTexts.forEach((chunk, i) => {
+                  if (i !== index && !audioDataMap.has(i)) {
+                    usedApiKeys.add(chunk.suggestedApiKey);
+                  }
+                });
+
+                // Sort by remaining tokens (prefer keys with more quota)
+                const sortedKeys = [...freshQuotaInfo.keys].sort((a, b) => b.remainingTokens - a.remainingTokens);
+
+                // Find a suitable API key different from current
+                const suitableKey = sortedKeys.find(key =>
+                  key.name !== currentApiName &&
+                  key.remainingTokens >= chunkLength + 50
+                );
+
+                if (suitableKey) {
+                  // Update the chunk with new API key
+                  setSplitTexts(prev => {
+                    const newTexts = [...prev];
+                    newTexts[index] = {
+                      ...newTexts[index],
+                      suggestedApiKey: suitableKey.name,
+                      maxTokens: suitableKey.remainingTokens
+                    };
+                    return newTexts;
+                  });
+                  console.log(`🔄 Changed API for chunk ${index + 1}: ${currentApiName} → ${suitableKey.name}`);
+                  
+                  // Wait a bit before retrying
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                } else {
+                  console.log(`❌ No alternative API key available for chunk ${index + 1}`);
+                  setError(`Đoạn ${index + 1}: Không còn API key khả dụng`);
+                  break; // Exit retry loop
+                }
+              }
+            } catch (quotaErr) {
+              console.error('Error refreshing quota:', quotaErr);
+            }
+          }
+        } finally {
+          setGeneratingIndexes(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(index);
+            return newSet;
+          });
+        }
+      }
+
+      // If we couldn't generate this chunk after all attempts, stop the whole process
+      if (!success) {
+        console.log(`🛑 Stopping generation: Failed to generate chunk ${index + 1} after ${attempts} attempts`);
+        setError(`Không thể tạo audio đoạn ${index + 1} sau ${attempts} lần thử. Quá trình đã dừng.`);
+        break;
+      }
+    }
+
+    setParallelGenerating(false);
+    setSelectedChunks(new Set());
   };
 
   // Generate selected chunks with parallel processing
@@ -1427,7 +1544,7 @@ export default function LongTextSplitter() {
                           </>
                         ) : (
                           <>
-                            🎯 Tạo {selectedChunks.size} đoạn đã chọn (2 song song)
+                            🎯 Tạo {selectedChunks.size} đoạn đã chọn (tuần tự)
                           </>
                         )}
                       </button>
@@ -1453,7 +1570,7 @@ export default function LongTextSplitter() {
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
                             </svg>
-                            🎵 Tạo Tất Cả (2 song song)
+                            🎵 Tạo Tất Cả (tuần tự + auto retry)
                           </>
                         )}
                       </button>
@@ -1697,7 +1814,7 @@ export default function LongTextSplitter() {
                       Đang tạo...
                     </>
                   ) : (
-                    <>🎵 Tạo Tất Cả (2 song song)</>
+                    <>🎵 Tạo Tất Cả (tuần tự + auto retry)</>
                   )}
                 </button>
                 {audioDataMap.size > 0 && (
