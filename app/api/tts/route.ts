@@ -398,23 +398,9 @@ async function syncQuotaFromElevenLabs(apiKey: ApiKeyDocument) {
 async function getAvailableApiKey(requiredTokens: number, excludeIds: string[] = []) {
   await connectDB();
 
-  console.log(`🔍 Looking for best-fit API key for ${requiredTokens} tokens (excluding ${excludeIds.length} keys)`);
+  console.log(`🔍 Looking for API key for ${requiredTokens} tokens (excluding ${excludeIds.length} keys)`);
 
-  // Always sync all active keys first to ensure accurate quotas
-  const allActive = await ApiKey.find({ isActive: true });
-  console.log(`🔄 Syncing ${allActive.length} active keys to get real-time quotas...`);
-
-  for (const key of allActive) {
-    const lastUpdated = key.updatedAt || key.createdAt;
-    const hoursSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
-
-    // Only sync if not recently updated (within 1 hour)
-    if (hoursSinceUpdate > 1) {
-      await syncQuotaFromElevenLabs(key);
-    }
-  }
-
-  // Get all available keys (not excluded, active, sufficient quota)
+  // Get all available keys (not excluded, active, sufficient quota in DB)
   const query: { isActive: boolean; remainingTokens?: { $gte: number }; _id?: { $nin: string[] } } = {
     isActive: true,
     remainingTokens: { $gte: requiredTokens }
@@ -424,71 +410,72 @@ async function getAvailableApiKey(requiredTokens: number, excludeIds: string[] =
     query._id = { $nin: excludeIds };
   }
 
-  // Find all matching keys and sort by remainingTokens ASCENDING (smallest first)
+  // Find all matching keys and RANDOMIZE order for keys with same quota
   const availableKeys = await ApiKey.find(query).sort({ remainingTokens: 1 });
+  
+  // Shuffle keys with same quota to distribute load
+  const shuffledKeys = [...availableKeys].sort((a, b) => {
+    const diff = a.remainingTokens - b.remainingTokens;
+    if (diff !== 0) return diff;
+    return Math.random() - 0.5;
+  });
 
-  let apiKey = null;
+  console.log(`📋 Found ${shuffledKeys.length} keys with >= ${requiredTokens} tokens in DB`);
 
-  if (availableKeys.length > 0) {
-    // Best-fit strategy: use smallest key that fits (avoid wasting large quotas)
-    apiKey = availableKeys[0];
-    console.log(`🎯 Best-fit: ${apiKey.name} with ${apiKey.remainingTokens} tokens for ${requiredTokens} required`);
-  } else {
-    console.log(`❌ No key found with >= ${requiredTokens} tokens`);
-  }
+  // Try each key, sync quota if needed
+  for (const key of shuffledKeys) {
+    const lastUpdated = key.updatedAt || key.createdAt;
+    const minutesSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60);
 
-  // Auto-refresh if key hasn't been synced recently
-  if (apiKey) {
-    const lastUpdated = apiKey.updatedAt || apiKey.createdAt;
-    const hoursSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
-
-    // If key not updated in 6 hours, sync quota
-    if (hoursSinceUpdate > 6) {
-      console.log(`⏰ Key ${apiKey.name} not synced for ${hoursSinceUpdate.toFixed(1)}h, refreshing...`);
-      const syncedKey = await syncQuotaFromElevenLabs(apiKey);
-      if (syncedKey) {
-        apiKey = syncedKey;
+    // Sync if not updated in last 10 minutes
+    if (minutesSinceUpdate > 10) {
+      console.log(`⏰ ${key.name} not synced for ${minutesSinceUpdate.toFixed(0)}m, refreshing...`);
+      const syncedKey = await syncQuotaFromElevenLabs(key);
+      
+      if (syncedKey && syncedKey.remainingTokens >= requiredTokens) {
+        console.log(`✓ ${syncedKey.name} has ${syncedKey.remainingTokens} tokens (verified)`);
+        return syncedKey;
+      } else if (syncedKey) {
+        console.log(`✗ ${syncedKey.name} only has ${syncedKey.remainingTokens} tokens after sync`);
       }
-    }
-  }
-
-  // If no key found, try syncing all active keys (excluding already tried ones)
-  if (!apiKey) {
-    console.log('⚠ No key with sufficient quota in DB, trying to sync all active keys...');
-
-    const query: { isActive: boolean; _id?: { $nin: string[] } } = { isActive: true };
-    if (excludeIds.length > 0) {
-      query._id = { $nin: excludeIds };
-    }
-
-    const allActiveKeys = await ApiKey.find(query).sort({ remainingTokens: -1 });
-
-    if (allActiveKeys.length === 0) {
-      console.log('✗ No more keys to try (all excluded or inactive)');
     } else {
-      for (const key of allActiveKeys) {
-        const syncedKey = await syncQuotaFromElevenLabs(key);
-        if (syncedKey && syncedKey.remainingTokens >= requiredTokens) {
-          console.log(`✓ Found available quota after sync: ${syncedKey.name}`);
-          return syncedKey;
-        }
-      }
+      // Recently synced, trust DB value
+      console.log(`🎯 Using ${key.name} with ${key.remainingTokens} tokens (recently synced)`);
+      return key;
     }
   }
 
-  if (!apiKey) {
-    const inactiveKeys = await ApiKey.findOne({
-      isActive: false,
-      remainingTokens: { $gte: requiredTokens }
-    });
+  // If no key found from DB query, try ALL active keys (they might have been reset)
+  console.log('⚠ No key with sufficient quota found, checking ALL active keys...');
 
-    if (inactiveKeys) {
-      throw new Error('All API keys are deactivated. Please activate at least one key in Admin Panel.');
-    }
-    throw new Error('No API key available with sufficient tokens. Please add more keys or check quotas in Admin Panel.');
+  const allQuery: { isActive: boolean; _id?: { $nin: string[] } } = { isActive: true };
+  if (excludeIds.length > 0) {
+    allQuery._id = { $nin: excludeIds };
   }
 
-  return apiKey;
+  const allActiveKeys = await ApiKey.find(allQuery);
+  
+  // Shuffle to try random keys
+  const shuffledAllKeys = [...allActiveKeys].sort(() => Math.random() - 0.5);
+  
+  console.log(`🔄 Checking ${shuffledAllKeys.length} active keys for real quota...`);
+
+  // Check up to 10 random keys
+  const keysToCheck = shuffledAllKeys.slice(0, 10);
+  
+  for (const key of keysToCheck) {
+    const syncedKey = await syncQuotaFromElevenLabs(key);
+    if (syncedKey && syncedKey.remainingTokens >= requiredTokens) {
+      console.log(`✓ Found key with quota: ${syncedKey.name} (${syncedKey.remainingTokens} tokens)`);
+      return syncedKey;
+    }
+  }
+
+  // Still no key found
+  const totalActive = await ApiKey.countDocuments({ isActive: true });
+  const totalWithQuota = await ApiKey.countDocuments({ isActive: true, remainingTokens: { $gte: requiredTokens } });
+  
+  throw new Error(`Không tìm được API key có đủ ${requiredTokens} tokens. DB: ${totalWithQuota}/${totalActive} keys có quota, nhưng đã sync và không đủ. Vui lòng kiểm tra quota thực tế trên ElevenLabs.`);
 }
 
 async function updateApiKeyUsage(keyId: string, tokensUsed: number) {

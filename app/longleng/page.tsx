@@ -83,6 +83,9 @@ export default function LongTextSplitter() {
 
   // State for tracking which chunk is refreshing API
   const [refreshingApiIndex, setRefreshingApiIndex] = useState<number | null>(null);
+  
+  // Track failed API keys to avoid reassigning them
+  const [failedApiKeys, setFailedApiKeys] = useState<Set<string>>(new Set());
 
   // Function to find a new API key for a chunk that failed
   const handleFindNewApiKey = async (index: number) => {
@@ -91,6 +94,9 @@ export default function LongTextSplitter() {
 
     setRefreshingApiIndex(index);
     setError('');
+
+    // Add current key to failed list
+    setFailedApiKeys(prev => new Set(prev).add(currentChunk.suggestedApiKey));
 
     try {
       // First, refresh quota info from server to get latest data
@@ -117,52 +123,73 @@ export default function LongTextSplitter() {
       const chunkLength = currentChunk.chunk.length;
       const currentApiName = currentChunk.suggestedApiKey;
 
-      // Find a suitable API key that:
-      // 1. Is different from the current one
-      // 2. Has enough tokens for this chunk
-      // Sort by remaining tokens (prefer keys with more quota)
-      const sortedKeys = [...freshQuotaInfo.keys].sort((a, b) => b.remainingTokens - a.remainingTokens);
+      // Get all keys that have been tried for this chunk (from failed list)
+      const keysToAvoid = new Set(failedApiKeys);
+      keysToAvoid.add(currentApiName);
+      
+      console.log(`🚫 Keys to avoid: ${Array.from(keysToAvoid).join(', ')}`);
 
-      const suitableKey = sortedKeys.find(key =>
-        key.name !== currentApiName &&
+      // Filter eligible keys first (enough quota and not in avoid list)
+      const eligibleKeys = freshQuotaInfo.keys.filter(key =>
+        !keysToAvoid.has(key.name) &&
         key.remainingTokens >= chunkLength + 50
       );
 
-      if (!suitableKey) {
-        // If no different key found, try to find ANY key with enough quota (including current one if it now has quota)
-        const anyKey = sortedKeys.find(key => key.remainingTokens >= chunkLength + 50);
+      console.log(`📋 Eligible keys (not avoided, enough quota): ${eligibleKeys.length} keys`);
 
-        if (!anyKey) {
-          setError(`Không tìm được API key nào có đủ quota cho đoạn ${index + 1} (${chunkLength} ký tự)`);
+      // Sort by remaining tokens, then RANDOMIZE among keys with same quota
+      const sortedKeys = [...eligibleKeys].sort((a, b) => {
+        const diff = b.remainingTokens - a.remainingTokens;
+        if (diff !== 0) return diff;
+        // Random order for keys with same quota
+        return Math.random() - 0.5;
+      });
+
+      // Pick the first eligible key (random among top quota keys)
+      const suitableKey = sortedKeys[0];
+
+      if (!suitableKey) {
+        // No eligible keys found - all have been tried or don't have enough quota
+        // Find ANY key with enough quota (even if already tried)
+        const allKeysWithQuota = freshQuotaInfo.keys.filter(k => k.remainingTokens >= chunkLength + 50);
+        
+        if (allKeysWithQuota.length === 0) {
+          setError(`Không tìm được API key nào có đủ quota cho đoạn ${index + 1} (${chunkLength} ký tự). Tất cả ${freshQuotaInfo.keys.length} keys đều không đủ quota.`);
           return;
         }
-
-        // Use the same key if it's the only one with enough quota
+        
+        // Pick a random key from those with enough quota
+        const randomIndex = Math.floor(Math.random() * allKeysWithQuota.length);
+        const bestAvailable = allKeysWithQuota[randomIndex];
+        setError(`Đã thử ${keysToAvoid.size} keys đều lỗi. Chọn random key: ${bestAvailable.name} (${bestAvailable.remainingTokens} tokens). Nhấn "Đổi API" để thử key khác.`);
+        
+        // Update to random available key
         setSplitTexts(prev => {
           const newTexts = [...prev];
           newTexts[index] = {
             ...newTexts[index],
-            suggestedApiKey: anyKey.name,
-            maxTokens: anyKey.remainingTokens
+            suggestedApiKey: bestAvailable.name,
+            maxTokens: bestAvailable.remainingTokens
           };
           return newTexts;
         });
 
-        console.log(`🔄 Updated API for chunk ${index + 1}: ${currentApiName} → ${anyKey.name} (same or only available)`);
-      } else {
-        // Update the chunk with new API key
-        setSplitTexts(prev => {
-          const newTexts = [...prev];
-          newTexts[index] = {
-            ...newTexts[index],
-            suggestedApiKey: suitableKey.name,
-            maxTokens: suitableKey.remainingTokens
-          };
-          return newTexts;
-        });
-
-        console.log(`🔄 Changed API for chunk ${index + 1}: ${currentApiName} → ${suitableKey.name}`);
+        console.log(`⚠️ All ${keysToAvoid.size} tried keys failed. Random pick: ${bestAvailable.name}`);
+        return;
       }
+
+      // Update the chunk with new API key
+      setSplitTexts(prev => {
+        const newTexts = [...prev];
+        newTexts[index] = {
+          ...newTexts[index],
+          suggestedApiKey: suitableKey.name,
+          maxTokens: suitableKey.remainingTokens
+        };
+        return newTexts;
+      });
+
+      console.log(`🔄 Changed API for chunk ${index + 1}: ${currentApiName} → ${suitableKey.name} (avoiding ${keysToAvoid.size} failed keys)`);
 
       // Clear error for this chunk
       setChunkErrors(prev => {
@@ -305,7 +332,7 @@ export default function LongTextSplitter() {
 
       // If remaining text fits in this API's quota
       if (remainingText <= safeMaxLength) {
-        const finalChunk = text.slice(startIndex).trim();
+        const finalChunk = text.slice(startIndex);
         chunks.push({
           chunk: finalChunk,
           suggestedApiKey: currentApiKey.name,
@@ -332,11 +359,11 @@ export default function LongTextSplitter() {
       } else {
         const lastSpace = segment.lastIndexOf(' ');
         if (lastSpace > minLength) {
-          endIndex = startIndex + lastSpace + 1; // +1 to skip the space
+          endIndex = startIndex + lastSpace + 1;
         }
       }
 
-      const chunkText = text.slice(startIndex, endIndex).trim();
+      const chunkText = text.slice(startIndex, endIndex);
       chunks.push({
         chunk: chunkText,
         suggestedApiKey: currentApiKey.name,
@@ -348,11 +375,7 @@ export default function LongTextSplitter() {
       // Mark this key as used
       usedKeyIds.add(currentApiKey.name);
 
-      // Skip whitespace at the beginning of next chunk
-      while (endIndex < text.length && /\s/.test(text[endIndex])) {
-        endIndex++;
-      }
-
+      // Move to next chunk (no whitespace skipping to preserve exact character count)
       startIndex = endIndex;
     }
 
@@ -394,6 +417,7 @@ export default function LongTextSplitter() {
 
       setSplitTexts(chunks);
       setAudioDataMap(new Map()); // Clear previous audio
+      setFailedApiKeys(new Set()); // Reset failed keys list
 
       // Show summary
       const totalChars = chunks.reduce((sum, c) => sum + c.chunk.length, 0);
@@ -471,6 +495,12 @@ export default function LongTextSplitter() {
         const newErrors = new Map(prev);
         newErrors.delete(index);
         return newErrors;
+      });
+      // Clear this API key from failed list since it worked
+      setFailedApiKeys(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(textChunk.suggestedApiKey);
+        return newSet;
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Lỗi khi tạo audio';
