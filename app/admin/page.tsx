@@ -34,6 +34,9 @@ export default function AdminPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newKey, setNewKey] = useState({ key: '', totalTokens: 10000 });
   const [nextKeyNumber, setNextKeyNumber] = useState(41);
+  const [bulkKeys, setBulkKeys] = useState('');
+  const [parsedKeys, setParsedKeys] = useState<string[]>([]);
+  const [addingBulk, setAddingBulk] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [checkingQuota, setCheckingQuota] = useState<string | null>(null);
@@ -177,6 +180,80 @@ export default function AdminPage() {
     } catch (err) {
       setError('Failed to add API key');
     }
+  };
+
+  // Parse and filter valid API keys from bulk input
+  const handleBulkKeysChange = (value: string) => {
+    setBulkKeys(value);
+    
+    // Extract valid ElevenLabs API keys (sk_ format with at least 20 chars)
+    const lines = value.split(/[\n\r,;\s]+/).filter(Boolean);
+    const validKeys: string[] = [];
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      // ElevenLabs API keys typically start with "sk_" and are 32+ characters
+      if (trimmed.length >= 20 && /^[a-zA-Z0-9_]+$/.test(trimmed)) {
+        if (!validKeys.includes(trimmed)) {
+          validKeys.push(trimmed);
+        }
+      }
+    });
+    
+    setParsedKeys(validKeys);
+  };
+
+  const handleAddBulkKeys = async () => {
+    if (parsedKeys.length === 0) return;
+    
+    setAddingBulk(true);
+    setError('');
+    setSuccess('');
+    
+    let successCount = 0;
+    let failCount = 0;
+    let currentNumber = nextKeyNumber;
+    
+    for (const key of parsedKeys) {
+      try {
+        const response = await fetch('/api/keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: `${currentNumber}`,
+            key: key,
+            totalTokens: 10000
+          }),
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          successCount++;
+          currentNumber++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+    
+    setAddingBulk(false);
+    setBulkKeys('');
+    setParsedKeys([]);
+    setShowAddForm(false);
+    
+    if (successCount > 0) {
+      setSuccess(`Added ${successCount} key(s) successfully${failCount > 0 ? `, ${failCount} failed` : ''}`);
+      fetchKeys(pagination.page);
+    } else {
+      setError(`Failed to add keys: ${failCount} failed`);
+    }
+    
+    setTimeout(() => {
+      setSuccess('');
+      setError('');
+    }, 5000);
   };
 
   const handleToggleActive = async (id: string, isActive: boolean) => {
@@ -431,37 +508,77 @@ export default function AdminPage() {
           </div>
 
           {showAddForm && (
-            <form onSubmit={handleAddKey} className="mb-6 p-4 bg-green-50 border border-green-200 rounded">
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded">
               <div className="mb-3">
                 <p className="text-sm text-green-800">
-                  <strong>Adding Key {nextKeyNumber}</strong> - Just paste your ElevenLabs API key below
+                  <strong>Bulk Add Keys</strong> - Paste multiple API keys (separated by newlines, commas, or spaces)
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ElevenLabs API Key <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newKey.key}
-                    onChange={(e) => setNewKey({ ...newKey, key: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono bg-white text-gray-900"
-                    placeholder="sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    required
-                  />
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Paste API Keys <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={bulkKeys}
+                  onChange={(e) => handleBulkKeysChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono bg-white text-gray-900 text-sm"
+                  placeholder="sk_key1&#10;sk_key2&#10;sk_key3&#10;..."
+                  rows={5}
+                />
+              </div>
+
+              {parsedKeys.length > 0 && (
+                <div className="mb-4 p-3 bg-white border border-green-300 rounded">
+                  <p className="text-sm font-semibold text-green-800 mb-2">
+                    Found {parsedKeys.length} valid key(s):
+                  </p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {parsedKeys.map((key, index) => (
+                      <div key={index} className="flex items-center gap-2 text-sm">
+                        <span className="font-semibold text-blue-600 min-w-[60px]">
+                          Key {nextKeyNumber + index}:
+                        </span>
+                        <span className="font-mono text-gray-600 truncate">
+                          {key.substring(0, 10)}...{key.substring(key.length - 4)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              <div className="flex gap-3">
                 <button
-                  type="submit"
-                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+                  onClick={handleAddBulkKeys}
+                  disabled={parsedKeys.length === 0 || addingBulk}
+                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  ✓ Add Key {nextKeyNumber}
+                  {addingBulk ? (
+                    <>
+                      <span className="inline-block animate-spin">⟳</span>
+                      <span>Adding...</span>
+                    </>
+                  ) : (
+                    <>✓ Add {parsedKeys.length} Key(s)</>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setBulkKeys('');
+                    setParsedKeys([]);
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                >
+                  Cancel
                 </button>
               </div>
+
               <p className="text-xs text-gray-500 mt-2">
-                Default quota: 10,000 characters/month (Free tier)
+                Keys will be numbered from {nextKeyNumber}. Default quota: 10,000 characters/month (Free tier)
               </p>
-            </form>
+            </div>
           )}
 
           {loading ? (
